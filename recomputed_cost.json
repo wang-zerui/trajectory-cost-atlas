@@ -1,0 +1,134 @@
+{
+  "price_per_mtok": {
+    "fresh": 5.0,
+    "cache_write": 6.25,
+    "cache_read": 0.5,
+    "decode": 25.0
+  },
+  "assumption": "weak-model inference is free; strong-side (Opus 4.8) tokens only",
+  "datasets": [
+    {
+      "dataset": "Pi",
+      "sessions": 4,
+      "calls": 185,
+      "tokens": {
+        "fresh": 363622,
+        "cache_write": 313161,
+        "cache_read": 7183788,
+        "decode": 203776
+      },
+      "token_total": 8064347,
+      "cost_usd": {
+        "fresh": 1.81811,
+        "cache_write": 1.95725625,
+        "cache_read": 3.591894,
+        "decode": 5.0944
+      },
+      "cost_total_usd": 12.46166025,
+      "token_share_pct": {
+        "fresh": 4.509007362902415,
+        "cache_write": 3.8832778401028625,
+        "cache_read": 89.08083940336397,
+        "decode": 2.526875393630755
+      },
+      "cost_share_pct": {
+        "fresh": 14.589629018332447,
+        "cache_write": 15.706223815562616,
+        "cache_read": 28.82355904382805,
+        "decode": 40.88058812227689
+      }
+    },
+    {
+      "dataset": "KernelBook",
+      "rows": 300,
+      "turns": 2426,
+      "tokens": {
+        "fresh": 783224,
+        "cache_write": 5951565,
+        "cache_read": 74667246,
+        "decode": 3391974
+      },
+      "token_total": 84794009,
+      "cost_usd": {
+        "fresh": 3.91612,
+        "cache_write": 37.19728125,
+        "cache_read": 37.333623,
+        "decode": 84.79935
+      },
+      "cost_total_usd": 163.24637425,
+      "token_share_pct": {
+        "fresh": 0.923678464123568,
+        "cache_write": 7.018850824708618,
+        "cache_read": 88.05721875940552,
+        "decode": 4.0002519517623
+      },
+      "cost_share_pct": {
+        "fresh": 2.3989016711652935,
+        "cache_write": 22.785976975534577,
+        "cache_read": 22.869495982083045,
+        "decode": 51.9456253712171
+      }
+    },
+    {
+      "dataset": "OpenHands",
+      "instances": 16,
+      "calls": 1225,
+      "tokens": {
+        "fresh": 13514,
+        "cache_write": 3087464,
+        "cache_read": 150242743,
+        "decode": 1208650
+      },
+      "token_total": 154552371,
+      "cost_usd": {
+        "fresh": 0.06757,
+        "cache_write": 19.29665,
+        "cache_read": 75.1213715,
+        "decode": 30.21625
+      },
+      "cost_total_usd": 124.7018415,
+      "token_share_pct": {
+        "fresh": 0.008743961618033022,
+        "cache_write": 1.997681420235216,
+        "cache_read": 97.21154196980906,
+        "decode": 0.7820326483376951
+      },
+      "cost_share_pct": {
+        "fresh": 0.054185246334152976,
+        "cache_write": 15.474230186087508,
+        "cache_read": 60.24078762301196,
+        "decode": 24.23079694456637
+      }
+    }
+  ],
+  "pooled": {
+    "dataset": "POOLED",
+    "note": "sum of 3 datasets, not workload-weighted",
+    "tokens": {
+      "fresh": 1160360,
+      "cache_write": 9352190,
+      "cache_read": 232093777,
+      "decode": 4804400
+    },
+    "token_total": 247410727,
+    "cost_usd": {
+      "fresh": 5.8018,
+      "cache_write": 58.4511875,
+      "cache_read": 116.0468885,
+      "decode": 120.11
+    },
+    "cost_total_usd": 300.409876,
+    "token_share_pct": {
+      "fresh": 0.46900149159660326,
+      "cache_write": 3.7800260778506987,
+      "cache_read": 93.80910028205851,
+      "decode": 1.941872148494192
+    },
+    "cost_share_pct": {
+      "fresh": 1.9312946955179333,
+      "cache_write": 19.45714577639252,
+      "cache_read": 38.629518458307935,
+      "decode": 39.98204106978161
+    }
+  }
+}

@@ -1,0 +1,1549 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Open Trajectory Cost Atlas · Prefill / Decode</title>
+  <style>
+    :root {
+      --bg: #07110f;
+      --panel: rgba(14, 29, 26, 0.86);
+      --panel-2: #10241f;
+      --line: rgba(190, 231, 218, 0.14);
+      --line-strong: rgba(190, 231, 218, 0.24);
+      --text: #edf7f3;
+      --muted: #91aaa2;
+      --fresh: #4fd1bd;
+      --write: #66a7ff;
+      --read: #7f8aa4;
+      --decode: #ff9d62;
+      --decode-2: #ff725e;
+      --lime: #b9ee7d;
+      --violet: #b4a2ff;
+      --shadow: 0 24px 80px rgba(0,0,0,.28);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 14% 0%, rgba(79, 209, 189, .12), transparent 28rem),
+        radial-gradient(circle at 88% 4%, rgba(255, 157, 98, .10), transparent 26rem),
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
+        var(--bg);
+      background-size: auto, auto, 32px 32px, 32px 32px, auto;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    a { color: inherit; }
+    button, input { font: inherit; }
+    .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+
+    .page { width: min(1240px, calc(100% - 36px)); margin: 0 auto; padding: 28px 0 60px; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 4px 2px 28px;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 760; letter-spacing: -.02em; }
+    .brand-mark {
+      width: 30px; height: 30px; border-radius: 10px;
+      display: grid; place-items: center; color: #06110e;
+      background: linear-gradient(135deg, var(--fresh), var(--lime));
+      box-shadow: 0 0 26px rgba(79, 209, 189, .25);
+      font: 900 13px/1 "SFMono-Regular", monospace;
+    }
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .nav a {
+      text-decoration: none; color: var(--muted); font-size: 13px;
+      padding: 7px 10px; border: 1px solid transparent; border-radius: 999px;
+    }
+    .nav a:hover, .nav a:focus-visible { color: var(--text); border-color: var(--line-strong); outline: none; }
+
+    .hero {
+      position: relative; overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 28px;
+      padding: clamp(28px, 5vw, 62px);
+      background:
+        linear-gradient(115deg, rgba(24, 52, 45, .96), rgba(10, 24, 21, .96)),
+        var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .hero::after {
+      content: ""; position: absolute; width: 420px; height: 420px;
+      border: 1px solid rgba(185,238,125,.18); border-radius: 50%;
+      right: -210px; top: -245px;
+      box-shadow: 0 0 0 50px rgba(79,209,189,.035), 0 0 0 105px rgba(79,209,189,.025);
+      pointer-events: none;
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--lime); font: 700 11px/1.2 "SFMono-Regular", monospace;
+      letter-spacing: .11em; text-transform: uppercase;
+      padding: 8px 10px; border-radius: 999px;
+      background: rgba(185, 238, 125, .08); border: 1px solid rgba(185, 238, 125, .2);
+    }
+    .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+    h1 {
+      max-width: 900px; margin: 22px 0 16px;
+      font-size: clamp(40px, 7vw, 82px); line-height: .98; letter-spacing: -.062em;
+    }
+    .hero-copy { max-width: 780px; color: #b8cbc4; font-size: clamp(16px, 2vw, 20px); margin: 0; }
+    .hero-copy strong { color: var(--text); font-weight: 720; }
+    .hero-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+    .pill {
+      color: #bfd1ca; border: 1px solid var(--line); background: rgba(4, 14, 11, .24);
+      padding: 8px 11px; border-radius: 10px; font-size: 12px;
+    }
+
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 34px; }
+    .kpi {
+      min-width: 0; padding: 17px; border: 1px solid var(--line);
+      border-radius: 16px; background: rgba(4, 14, 11, .28);
+    }
+    .kpi-label { color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+    .kpi-value { margin-top: 7px; font: 760 clamp(23px, 3vw, 36px)/1 "SFMono-Regular", monospace; letter-spacing: -.05em; }
+    .kpi-note { margin-top: 8px; color: #a9beb7; font-size: 12px; }
+    .warm { color: var(--decode); }
+    .cool { color: var(--fresh); }
+
+    .visual-overview { display: grid; gap: 14px; }
+    .donut-panel { padding: clamp(20px, 3vw, 30px); }
+    .viz-title-row { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+    .viz-title { margin: 0; font-size: 19px; letter-spacing: -.025em; }
+    .viz-sub { color: var(--muted); font-size: 11px; margin-top: 5px; }
+    .donut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .summary-donut-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+    .summary-donut-grid .donut-card { grid-template-columns: minmax(170px, .7fr) minmax(180px, 1fr); padding: 22px; }
+    .chart-divider { display: flex; align-items: center; gap: 12px; margin: 4px 0 18px; color: var(--muted); font: 700 10px/1 "SFMono-Regular", monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .chart-divider::before, .chart-divider::after { content: ""; height: 1px; background: var(--line); flex: 1; }
+    .donut-card {
+      min-width: 0; display: grid; grid-template-columns: minmax(142px, .8fr) minmax(128px, 1fr);
+      gap: 18px; align-items: center; padding: 18px; border-radius: 16px;
+      background: rgba(4,14,11,.25); border: 1px solid var(--line);
+    }
+    .donut-wrap { display: grid; place-items: center; position: relative; aspect-ratio: 1; width: min(100%, 178px); margin: auto; }
+    .donut {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: var(--gradient);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 16px 34px rgba(0,0,0,.22);
+      transform: rotate(-90deg);
+    }
+    .donut::after {
+      content: ""; position: absolute; inset: 21%; border-radius: 50%;
+      background: #10231e; box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .donut-center { position: relative; z-index: 1; text-align: center; pointer-events: none; }
+    .donut-total { font: 790 clamp(21px, 2.5vw, 30px)/1 "SFMono-Regular", monospace; letter-spacing: -.05em; }
+    .donut-unit { color: var(--muted); font-size: 9px; margin-top: 7px; text-transform: uppercase; letter-spacing: .08em; }
+    .donut-copy h3 { margin: 0 0 6px; font-size: 15px; }
+    .donut-copy p { margin: 0 0 13px; color: var(--muted); font-size: 10px; }
+    .donut-stat { display: grid; grid-template-columns: 9px 1fr auto; gap: 7px; align-items: center; margin-top: 7px; color: #b8cbc4; font-size: 10px; }
+    .donut-stat i { width: 8px; height: 8px; border-radius: 3px; background: var(--c); }
+    .donut-stat strong { color: var(--text); font: 650 10px/1 "SFMono-Regular", monospace; }
+
+    .column-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .column-panel { padding: 22px 24px 18px; min-width: 0; }
+    .column-chart {
+      height: 260px; display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(16px, 4vw, 42px);
+      align-items: end; padding: 22px 12px 0; margin-top: 6px; position: relative;
+      border-left: 1px solid var(--line); border-bottom: 1px solid var(--line);
+      background: repeating-linear-gradient(to top, transparent 0 51px, rgba(190,231,218,.07) 52px 53px);
+    }
+    .axis-max { position: absolute; left: 9px; top: 4px; color: var(--muted); font: 9px/1 "SFMono-Regular", monospace; }
+    .column-item { height: 100%; display: flex; flex-direction: column; justify-content: end; align-items: center; min-width: 0; }
+    .column-value { margin-bottom: 8px; color: #dcebe6; font: 700 11px/1 "SFMono-Regular", monospace; }
+    .column-bar {
+      width: min(74px, 72%); height: var(--h); min-height: 7px; border-radius: 10px 10px 2px 2px;
+      background: var(--c);
+      box-shadow: 0 10px 25px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.22);
+    }
+    .column-label { height: 32px; padding-top: 9px; color: var(--muted); font-size: 10px; text-align: center; white-space: nowrap; }
+    .scale-note { color: var(--muted); font-size: 10px; margin-top: 12px; }
+
+    section { margin-top: 56px; scroll-margin-top: 24px; }
+    .section-head {
+      display: flex; align-items: end; justify-content: space-between; gap: 20px;
+      margin: 0 2px 18px;
+    }
+    .section-kicker { color: var(--fresh); font: 700 11px/1 "SFMono-Regular", monospace; letter-spacing: .1em; text-transform: uppercase; }
+    h2 { margin: 8px 0 0; font-size: clamp(27px, 4vw, 43px); line-height: 1.05; letter-spacing: -.045em; }
+    .section-desc { max-width: 600px; margin: 0; color: var(--muted); font-size: 14px; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(17, 39, 34, .9), rgba(9, 23, 20, .9));
+      box-shadow: 0 16px 45px rgba(0,0,0,.14);
+    }
+    .panel-pad { padding: clamp(18px, 3.2vw, 32px); }
+    .control-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding-bottom: 22px; border-bottom: 1px solid var(--line);
+    }
+    .segmented {
+      display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px;
+      background: rgba(3, 13, 11, .58); border: 1px solid var(--line);
+    }
+    .segmented button {
+      border: 0; color: var(--muted); background: transparent; cursor: pointer;
+      padding: 8px 11px; border-radius: 8px; font-size: 12px; white-space: nowrap;
+    }
+    .segmented button:hover { color: var(--text); }
+    .segmented button.active { color: #07110f; background: var(--text); font-weight: 720; }
+    .price-formula { color: var(--muted); font-size: 11px; text-align: right; }
+    .price-formula strong { color: var(--text); }
+
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 20px 0 8px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 7px; color: #b5c8c1; font-size: 12px; }
+    .swatch { width: 9px; height: 9px; border-radius: 3px; background: var(--c); }
+    .chart-rows { display: grid; gap: 26px; padding-top: 20px; }
+    .dataset-row { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 22px; align-items: center; }
+    .dataset-name { font-size: 16px; font-weight: 750; letter-spacing: -.02em; }
+    .dataset-sub { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .ratio-badge {
+      display: inline-block; margin-top: 9px; padding: 5px 7px; border-radius: 7px;
+      background: rgba(255,157,98,.09); color: #ffc09a; font: 700 11px/1 "SFMono-Regular", monospace;
+    }
+    .bar-line { min-width: 0; }
+    .track-shell { width: 100%; min-height: 30px; display: flex; align-items: center; }
+    .track {
+      display: flex; height: 44px; overflow: hidden; border-radius: 11px;
+      background: rgba(255,255,255,.035); box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+      transition: width .45s cubic-bezier(.2,.8,.2,1);
+    }
+    .segment {
+      min-width: 1px; height: 100%; position: relative; cursor: help;
+      transition: width .45s cubic-bezier(.2,.8,.2,1), filter .2s ease;
+    }
+    .segment:hover { filter: brightness(1.22); z-index: 2; }
+    .segment:focus-visible { outline: 2px solid var(--text); outline-offset: -3px; filter: brightness(1.18); z-index: 3; }
+    .segment + .segment { box-shadow: -1px 0 rgba(7,17,15,.7); }
+    .segment-label { display: grid; place-items: center; height: 100%; color: #07110f; font: 850 9px/1 "SFMono-Regular", monospace; white-space: nowrap; padding: 0 5px; }
+    .bar-caption { display: flex; justify-content: space-between; gap: 14px; margin-top: 8px; color: var(--muted); font-size: 11px; }
+    .bar-caption strong { color: #dcebe6; font-weight: 650; }
+    .chart-note {
+      margin-top: 24px; padding: 14px 16px; border-radius: 12px;
+      background: rgba(79,209,189,.055); border: 1px solid rgba(79,209,189,.13);
+      color: #acc4bc; font-size: 12px;
+    }
+
+    .turn-shell { overflow: hidden; }
+    .turn-selector {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+      margin-bottom: 14px;
+    }
+    .turn-choice {
+      min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: 14px;
+      color: var(--text); background: rgba(4,14,11,.26); cursor: pointer; text-align: left;
+      transition: border-color .18s ease, background .18s ease, transform .18s ease;
+    }
+    .turn-choice:hover, .turn-choice:focus-visible {
+      border-color: var(--line-strong); background: rgba(255,255,255,.035); outline: none;
+    }
+    .turn-choice:focus-visible { box-shadow: 0 0 0 2px rgba(79,209,189,.28); }
+    .turn-choice.active {
+      border-color: rgba(79,209,189,.52);
+      background: linear-gradient(145deg, rgba(79,209,189,.12), rgba(4,14,11,.35));
+      box-shadow: inset 0 0 0 1px rgba(79,209,189,.08);
+    }
+    .turn-choice-top { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+    .turn-choice-title { min-width: 0; font-size: 13px; font-weight: 760; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .turn-outcome {
+      flex: 0 0 auto; padding: 4px 6px; border-radius: 6px; color: var(--lime);
+      border: 1px solid rgba(185,238,125,.18); background: rgba(185,238,125,.07);
+      font: 700 8px/1 "SFMono-Regular", monospace; text-transform: uppercase;
+    }
+    .turn-outcome.near-miss { color: var(--decode); border-color: rgba(255,157,98,.2); background: rgba(255,157,98,.07); }
+    .turn-choice-stats { display: flex; gap: 8px 12px; flex-wrap: wrap; margin-top: 11px; color: var(--muted); font: 650 10px/1 "SFMono-Regular", monospace; }
+    .turn-choice-stats strong { color: #d8e8e2; font-weight: 720; }
+
+    .turn-panel { padding: clamp(18px, 3vw, 28px); }
+    .turn-toolbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      padding-bottom: 18px; border-bottom: 1px solid var(--line);
+    }
+    .turn-toolbar-copy h3 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
+    .turn-toolbar-copy p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+    .turn-summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 9px; margin: 16px 0 20px; }
+    .turn-stat { min-width: 0; padding: 13px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.018); }
+    .turn-stat-label { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .07em; }
+    .turn-stat-value { margin-top: 7px; color: var(--text); font: 760 clamp(16px, 2vw, 22px)/1 "SFMono-Regular", monospace; letter-spacing: -.035em; overflow: hidden; text-overflow: ellipsis; }
+    .turn-stat-note { margin-top: 7px; color: var(--muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .turn-chart-frame { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 10px; min-width: 0; }
+    .turn-y-axis { height: 372px; position: relative; color: var(--muted); font: 9px/1 "SFMono-Regular", monospace; }
+    .turn-y-label { position: absolute; right: 0; transform: translateY(-50%); white-space: nowrap; }
+    .turn-y-title { position: absolute; left: 0; top: 160px; transform: rotate(-90deg) translateX(-50%); transform-origin: 0 0; color: #b5c8c1; font: 700 9px/1 "SFMono-Regular", monospace; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+    .turn-scroll {
+      min-width: 0; overflow-x: auto; overflow-y: hidden; padding-bottom: 7px;
+      scrollbar-color: rgba(190,231,218,.3) rgba(255,255,255,.035);
+    }
+    .turn-plot {
+      position: relative; height: 372px; display: flex; align-items: stretch; gap: 3px;
+      padding: 0 12px; isolation: isolate;
+    }
+    .turn-plot::before {
+      content: ""; position: absolute; z-index: 0; inset: 0 0 auto; height: 340px; pointer-events: none;
+      border-left: 1px solid var(--line); border-bottom: 1px solid var(--line);
+      background: repeating-linear-gradient(to bottom, rgba(190,231,218,.075) 0 1px, transparent 1px 85px);
+    }
+    .turn-column { position: relative; z-index: 1; flex: 0 0 var(--turn-bar-width, 8px); display: grid; grid-template-rows: 340px 32px; min-width: 0; }
+    .turn-bar-wrap { min-width: 0; display: flex; align-items: end; cursor: crosshair; border-radius: 4px 4px 0 0; }
+    .turn-bar-wrap:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+    .turn-bar {
+      width: 100%; min-height: 1px; display: flex; flex-direction: column-reverse; overflow: hidden;
+      border-radius: 3px 3px 0 0; box-shadow: 0 0 0 1px rgba(7,17,15,.28);
+      transition: filter .16s ease;
+    }
+    .turn-bar-wrap:hover .turn-bar, .turn-bar-wrap:focus-visible .turn-bar { filter: brightness(1.27); }
+    .turn-stack { flex: 0 0 auto; width: 100%; min-height: 0; }
+    .turn-stack + .turn-stack { box-shadow: 0 -1px rgba(7,17,15,.22); }
+    .turn-index { padding-top: 8px; color: var(--muted); font: 8px/1 "SFMono-Regular", monospace; white-space: nowrap; transform: translateX(-1px); }
+    .turn-index.muted { color: transparent; user-select: none; }
+    .turn-empty { padding: 36px 18px; color: var(--muted); text-align: center; }
+    .turn-caption {
+      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      margin-top: 10px; color: var(--muted); font-size: 10px;
+    }
+    .turn-caption strong { color: #cfe0da; }
+    .turn-selection-note {
+      margin-top: 15px; padding: 13px 15px; border-radius: 11px;
+      color: #acc4bc; background: rgba(180,162,255,.055); border: 1px solid rgba(180,162,255,.14); font-size: 11px;
+    }
+
+    .formula-shell { padding: clamp(20px, 3vw, 32px); }
+    .phase-map { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: stretch; }
+    .phase-card { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: rgba(4,14,11,.25); }
+    .phase-card h3 { margin: 0 0 7px; font-size: 16px; }
+    .phase-card p { margin: 0; color: var(--muted); font-size: 11px; }
+    .phase-card.prefill-phase { border-color: rgba(79,209,189,.22); }
+    .phase-card.decode-phase { border-color: rgba(255,157,98,.24); }
+    .phase-metric { margin-top: 18px; font: 760 clamp(22px, 3vw, 34px)/1 "SFMono-Regular", monospace; letter-spacing: -.05em; }
+    .phase-arrow { display: grid; place-items: center; color: var(--muted); font-size: 28px; }
+    .phase-subrow { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
+    .phase-chip { padding: 6px 8px; border-radius: 7px; border: 1px solid var(--line); color: #bed0c9; font: 650 10px/1 "SFMono-Regular", monospace; }
+    .phase-chip.cache { border-style: dashed; color: #aab3c7; }
+
+    .formula-card { margin-top: 14px; padding: clamp(20px, 3vw, 30px); border: 1px solid var(--line); border-radius: 18px; background: #0b1c18; overflow: hidden; }
+    .formula-label { color: var(--muted); font: 700 10px/1 "SFMono-Regular", monospace; letter-spacing: .09em; text-transform: uppercase; }
+    .formula-main { margin: 16px 0 12px; overflow-x: auto; padding-bottom: 5px; color: var(--text); font: 720 clamp(17px, 2.5vw, 28px)/1.4 "SFMono-Regular", monospace; white-space: nowrap; }
+    .formula-main .f-u { color: var(--fresh); }
+    .formula-main .f-w { color: var(--write); }
+    .formula-main .f-r { color: var(--read); }
+    .formula-main .f-o { color: var(--decode); }
+    .formula-explain { color: var(--muted); font-size: 11px; }
+    .pricing-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 20px; }
+    .price-cell { padding: 13px 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.018); }
+    .price-symbol { font: 800 15px/1 "SFMono-Regular", monospace; }
+    .price-name { margin-top: 7px; min-height: 28px; color: var(--muted); font-size: 9px; }
+    .price-number { margin-top: 8px; color: var(--text); font: 700 13px/1 "SFMono-Regular", monospace; }
+
+    .calc-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 14px; margin-top: 14px; }
+    .calculator, .calc-result { padding: clamp(20px, 3vw, 26px); }
+    .calc-head { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+    .calc-head h3 { margin: 0; font-size: 17px; }
+    .calc-head p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+    .preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 16px; }
+    .preset {
+      padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted);
+      background: transparent; cursor: pointer; font-size: 10px;
+    }
+    .preset:hover, .preset:focus-visible { color: var(--text); border-color: var(--line-strong); outline: none; }
+    .token-inputs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 9px; margin-top: 16px; }
+    .token-input { display: grid; gap: 7px; }
+    .token-input label { color: var(--muted); font-size: 9px; line-height: 1.25; }
+    .token-input input {
+      min-width: 0; width: 100%; padding: 10px 9px; border: 1px solid var(--line); border-radius: 9px;
+      color: var(--text); background: rgba(3,12,10,.72); font: 650 12px/1 "SFMono-Regular", monospace;
+    }
+    .token-input input:focus { outline: 2px solid rgba(79,209,189,.35); border-color: var(--fresh); }
+    .calc-result { display: flex; flex-direction: column; justify-content: space-between; }
+    .calc-total-label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .calc-total { margin-top: 8px; font: 800 clamp(34px, 5vw, 54px)/1 "SFMono-Regular", monospace; letter-spacing: -.065em; }
+    .calc-breakdown { display: grid; gap: 9px; margin-top: 22px; }
+    .calc-row { display: grid; grid-template-columns: 86px 1fr 56px; gap: 9px; align-items: center; }
+    .calc-row-name { color: var(--muted); font-size: 9px; }
+    .calc-track { height: 9px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.045); }
+    .calc-fill { height: 100%; width: var(--w); min-width: 2px; border-radius: inherit; background: var(--c); transition: width .25s ease; }
+    .calc-value { text-align: right; color: #d7e5e0; font: 650 10px/1 "SFMono-Regular", monospace; }
+    .formula-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 16px; margin-top: 14px; padding: 13px 15px; border: 1px solid rgba(255,157,98,.18); border-radius: 11px; background: rgba(255,157,98,.055); color: #b9cbc4; font-size: 10px; }
+    .formula-foot a { color: var(--decode); text-decoration: none; }
+
+    .insight-strip {
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px;
+      margin-top: 14px; padding: 18px 20px; border-radius: 16px;
+      border: 1px solid rgba(255,157,98,.2);
+      background: linear-gradient(90deg, rgba(255,157,98,.09), rgba(255,157,98,.025));
+    }
+    .insight-num { color: var(--decode); font: 800 34px/1 "SFMono-Regular", monospace; letter-spacing: -.05em; }
+    .insight-copy { color: #c6d6d0; font-size: 13px; }
+    .insight-copy strong { color: var(--text); }
+    .arrow { color: var(--muted); font-size: 22px; }
+
+    .decode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .decode-card { padding: 22px; min-width: 0; }
+    .decode-card.proxy { grid-column: 1 / -1; border-style: dashed; }
+    .card-top { display: flex; justify-content: space-between; gap: 18px; align-items: start; }
+    .card-title { font-size: 17px; font-weight: 760; }
+    .card-sub { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .bound {
+      flex: none; text-align: right; color: var(--decode); font: 790 23px/1 "SFMono-Regular", monospace;
+    }
+    .bound small { display: block; margin-top: 7px; color: var(--muted); font: 500 10px/1.2 ui-sans-serif, sans-serif; }
+    .action-bar { display: flex; overflow: hidden; height: 42px; margin-top: 24px; border-radius: 11px; background: rgba(255,255,255,.035); }
+    .action-seg {
+      display: grid; place-items: center; min-width: 1px; color: #09110f;
+      font: 800 10px/1 "SFMono-Regular", monospace; cursor: help;
+      transition: filter .2s ease;
+    }
+    .action-seg:hover { filter: brightness(1.15); }
+    .action-seg:focus-visible { outline: 2px solid var(--text); outline-offset: -3px; filter: brightness(1.15); z-index: 2; }
+    .action-legend { display: flex; gap: 9px 14px; flex-wrap: wrap; margin-top: 15px; }
+    .action-legend .legend-item { font-size: 11px; }
+    .proxy .action-bar { background: rgba(255,255,255,.02); padding: 4px; gap: 2px; height: 34px; }
+    .proxy .action-seg { border-radius: 5px; color: rgba(7,17,15,.9); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.15) 0 4px, transparent 4px 8px); }
+
+    .matrix { overflow: hidden; }
+    .matrix-head, .matrix-row {
+      display: grid; grid-template-columns: 118px 1fr 1fr 72px; gap: 18px; align-items: center;
+    }
+    .matrix-head { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; padding: 0 0 12px; }
+    .matrix-row { padding: 15px 0; border-top: 1px solid var(--line); }
+    .matrix-label { font-size: 13px; font-weight: 700; }
+    .micro-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 48px; gap: 8px; align-items: center; }
+    .micro-track { height: 9px; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.045); }
+    .micro-fill { height: 100%; border-radius: inherit; background: var(--c); width: var(--w); }
+    .micro-value { color: #bfd0ca; text-align: right; font: 600 10px/1 "SFMono-Regular", monospace; }
+    .delta { text-align: right; font: 700 11px/1 "SFMono-Regular", monospace; color: var(--muted); }
+    .delta.pos { color: var(--decode); }
+    .delta.neg { color: var(--fresh); }
+
+    .lever-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .lever { padding: 18px; min-width: 0; }
+    .lever-source { color: var(--muted); font: 700 10px/1 "SFMono-Regular", monospace; text-transform: uppercase; letter-spacing: .08em; }
+    .lever-title { margin: 10px 0 17px; min-height: 42px; font-size: 13px; font-weight: 700; }
+    .before-after { display: grid; gap: 8px; }
+    .ba-line { display: grid; grid-template-columns: 40px 1fr; gap: 8px; align-items: center; }
+    .ba-label { color: var(--muted); font-size: 10px; }
+    .ba-track { height: 9px; border-radius: 99px; background: rgba(255,255,255,.045); overflow: hidden; }
+    .ba-fill { height: 100%; border-radius: inherit; width: var(--w); background: var(--c); }
+    .lever-value { margin-top: 16px; color: var(--lime); font: 790 25px/1 "SFMono-Regular", monospace; }
+    .lever-detail { color: var(--muted); font-size: 10px; margin-top: 7px; }
+
+    .evidence-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .evidence { padding: 22px; }
+    .evidence-num { color: var(--text); font: 760 28px/1 "SFMono-Regular", monospace; }
+    .evidence h3 { margin: 14px 0 7px; font-size: 16px; }
+    .evidence p { margin: 0; color: var(--muted); font-size: 12px; }
+    .evidence .tag { display: inline-block; margin-top: 16px; color: #bfd0ca; font-size: 10px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; }
+
+    .method {
+      display: grid; grid-template-columns: 1.2fr .8fr; gap: 14px;
+    }
+    .method-card { padding: 24px; }
+    .method-card h3 { margin: 0 0 12px; font-size: 16px; }
+    .method-card p, .method-card li { color: var(--muted); font-size: 12px; }
+    .method-card ul { margin: 10px 0 0; padding-left: 18px; }
+    .method-card li + li { margin-top: 7px; }
+    .source-links { display: grid; gap: 8px; }
+    .source-link {
+      display: flex; justify-content: space-between; gap: 16px; align-items: center;
+      padding: 10px 12px; text-decoration: none; border: 1px solid var(--line); border-radius: 10px;
+      color: #cfe0da; font-size: 12px; background: rgba(255,255,255,.018);
+    }
+    .source-link:hover { border-color: var(--line-strong); background: rgba(255,255,255,.035); }
+    .source-link span:last-child { color: var(--muted); }
+
+    footer {
+      margin-top: 30px; padding: 20px 2px 0; border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; gap: 18px; color: var(--muted); font-size: 11px;
+    }
+    .tooltip {
+      position: fixed; z-index: 30; pointer-events: none; opacity: 0;
+      max-width: min(290px, calc(100vw - 24px)); max-height: calc(100vh - 24px); padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--line-strong); background: #12241f; color: #dcebe6;
+      box-shadow: 0 12px 35px rgba(0,0,0,.35); font-size: 11px;
+      white-space: pre-line; overflow-wrap: anywhere;
+      transform: none; transition: opacity .12s ease;
+    }
+    .tooltip.show { opacity: 1; }
+
+    @media (max-width: 980px) {
+      .kpis { grid-template-columns: 1fr 1fr; }
+      .summary-donut-grid { grid-template-columns: 1fr; }
+      .donut-grid { grid-template-columns: 1fr; }
+      .donut-card { grid-template-columns: 180px 1fr; }
+      .pricing-strip { grid-template-columns: repeat(3, 1fr); }
+      .calc-grid { grid-template-columns: 1fr; }
+      .token-inputs { grid-template-columns: repeat(3, 1fr); }
+      .lever-grid { grid-template-columns: 1fr 1fr; }
+      .dataset-row { grid-template-columns: 150px 1fr; }
+      .matrix-head, .matrix-row { grid-template-columns: 90px 1fr 1fr 58px; gap: 10px; }
+      .turn-selector { grid-template-columns: 1fr 1fr; }
+      .turn-summary { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .page { width: min(100% - 22px, 1240px); padding-top: 14px; }
+      .nav { display: none; }
+      .hero { border-radius: 22px; padding: 26px 20px; }
+      .kpis, .decode-grid, .evidence-grid, .method { grid-template-columns: 1fr; }
+      .column-panels { grid-template-columns: 1fr; }
+      .summary-donut-grid .donut-card { grid-template-columns: 132px 1fr; padding: 14px; }
+      .donut-card { grid-template-columns: 132px 1fr; padding: 14px; }
+      .donut-grid { gap: 10px; }
+      .viz-title-row { align-items: stretch; flex-direction: column; }
+      .phase-map { grid-template-columns: 1fr; }
+      .phase-arrow { transform: rotate(90deg); min-height: 26px; }
+      .pricing-strip, .token-inputs { grid-template-columns: 1fr 1fr; }
+      .formula-foot { flex-direction: column; }
+      .decode-card.proxy { grid-column: auto; }
+      .section-head, .control-row { align-items: stretch; flex-direction: column; }
+      .turn-toolbar { align-items: stretch; flex-direction: column; }
+      .price-formula { text-align: left; }
+      .segmented { overflow-x: auto; width: 100%; }
+      .dataset-row { grid-template-columns: 1fr; gap: 11px; }
+      .insight-strip { grid-template-columns: 1fr; }
+      .arrow { display: none; }
+      .matrix-head { display: none; }
+      .matrix-row { grid-template-columns: 76px 1fr; }
+      .matrix-row .micro-wrap:nth-of-type(2)::before { content: "Prefill"; color: var(--muted); font-size: 9px; }
+      .matrix-row .micro-wrap:nth-of-type(3)::before { content: "Decode"; color: var(--muted); font-size: 9px; }
+      .matrix-row .micro-wrap { grid-column: 2; grid-template-columns: 42px minmax(0,1fr) 44px; }
+      .matrix-row .micro-wrap::before { grid-column: 1; }
+      .matrix-row .micro-track { grid-column: 2; grid-row: 1; }
+      .matrix-row .micro-value { grid-column: 3; grid-row: 1; }
+      .delta { grid-column: 2; }
+      .lever-grid { grid-template-columns: 1fr; }
+      .turn-selector, .turn-summary { grid-template-columns: 1fr; }
+      .turn-chart-frame { grid-template-columns: 50px minmax(0, 1fr); gap: 7px; }
+      footer { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="topbar">
+      <div class="brand"><span class="brand-mark">∑</span> Trajectory Cost Atlas</div>
+      <nav class="nav" aria-label="页面导航">
+        <a href="#visuals">图表总览</a>
+        <a href="#formula">API 公式</a>
+        <a href="#anatomy">成本结构</a>
+        <a href="#long-trajs">长轨迹逐轮</a>
+        <a href="#decode">Decode 去向</a>
+        <a href="#cross-harness">跨 Harness</a>
+        <a href="#levers">节省杠杆</a>
+        <a href="#method">口径</a>
+      </nav>
+    </div>
+
+    <header class="hero">
+      <span class="eyebrow">Open coding-agent traces · 2026-07-03</span>
+      <h1>Prefill 很大。<br><span class="warm">Decode 很贵。</span></h1>
+      <p class="hero-copy">
+        三组公开 <strong>Claude Opus 4.8</strong> coding-agent 轨迹的强模型 token 解剖。
+        把输入拆成 fresh、cache creation、cache read，再追踪输出究竟流向了哪些 tool actions。
+      </p>
+      <div class="hero-meta">
+        <span class="pill mono">319 usable trajectories</span>
+        <span class="pill mono">3,836 model calls / turns</span>
+        <span class="pill">weak model cost = 0</span>
+        <span class="pill">strong-side accounting only</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi">
+          <div class="kpi-label">Input / logical prefill</div>
+          <div class="kpi-value cool">242.61M</div>
+          <div class="kpi-note">含 cache read，不等于全部重新计算 KV</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Output / decode</div>
+          <div class="kpi-value warm">4.80M</div>
+          <div class="kpi-note">仅占 pooled token volume 的 1.94%</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Cache read share</div>
+          <div class="kpi-value">93.81%</div>
+          <div class="kpi-note">占所有 token events；占输入侧 95.67%</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Decode · normalized cost</div>
+          <div class="kpi-value warm">39.98%</div>
+          <div class="kpi-note">按归档一致 Opus 价格表，非实时价格</div>
+        </div>
+      </div>
+    </header>
+
+    <section id="visuals">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Visual summary</div>
+          <h2>先看图，再看数字</h2>
+        </div>
+        <p class="section-desc">环图按统一 Opus 价格展示 strong cost 构成；柱图分别比较每次调用的 logical prefill 与 decode，两个面板使用独立纵轴。</p>
+      </div>
+      <div class="visual-overview">
+        <article class="panel donut-panel">
+          <div class="viz-title-row">
+            <div>
+              <h3 class="viz-title">Strong-model normalized cost mix</h3>
+              <div class="viz-sub mono">U $5 · W $6.25 · R $0.50 · O $25 / 1M tokens</div>
+            </div>
+            <div class="legend" style="margin:0">
+              <span class="legend-item"><i class="swatch" style="--c:var(--fresh)"></i>Fresh</span>
+              <span class="legend-item"><i class="swatch" style="--c:var(--write)"></i>Cache write</span>
+              <span class="legend-item"><i class="swatch" style="--c:var(--read)"></i>Cache read</span>
+              <span class="legend-item"><i class="swatch" style="--c:var(--decode)"></i>Decode</span>
+            </div>
+          </div>
+          <div class="summary-donut-grid">
+            <div class="donut-card">
+              <div class="donut-wrap" role="img" aria-label="Pooled token volume: fresh input 0.47%, cache write 3.78%, cache read 93.81%, decode 1.94%">
+                <div class="donut" style="--gradient:conic-gradient(var(--fresh) 0 .47%, var(--write) .47% 4.25%, var(--read) 4.25% 98.06%, var(--decode) 98.06% 100%)"></div>
+                <div class="donut-center"><div class="donut-total">247.41M</div><div class="donut-unit">token events</div></div>
+              </div>
+              <div class="donut-copy">
+                <h3>Pooled token volume</h3><p>三个数据集的 inventory 合计，不是代表性 workload 权重</p>
+                <div class="donut-stat"><i style="--c:var(--fresh)"></i><span>Fresh · 1.16M</span><strong>0.47%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--write)"></i><span>Cache write · 9.35M</span><strong>3.78%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--read)"></i><span>Cache read · 232.09M</span><strong>93.81%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--decode)"></i><span>Decode · 4.80M</span><strong>1.94%</strong></div>
+              </div>
+            </div>
+            <div class="donut-card">
+              <div class="donut-wrap" role="img" aria-label="Pooled normalized cost: fresh input 1.93%, cache write 19.46%, cache read 38.63%, decode 39.98%">
+                <div class="donut" style="--gradient:conic-gradient(var(--fresh) 0 1.93%, var(--write) 1.93% 21.39%, var(--read) 21.39% 60.02%, var(--decode) 60.02% 100%)"></div>
+                <div class="donut-center"><div class="donut-total">$300.41</div><div class="donut-unit">normalized cost</div></div>
+              </div>
+              <div class="donut-copy">
+                <h3>Pooled strong cost</h3><p>统一归一化价格；把三组不同规模样本直接相加</p>
+                <div class="donut-stat"><i style="--c:var(--fresh)"></i><span>Fresh · $5.80</span><strong>1.93%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--write)"></i><span>Cache write · $58.45</span><strong>19.46%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--read)"></i><span>Cache read · $116.05</span><strong>38.63%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--decode)"></i><span>Decode · $120.11</span><strong>39.98%</strong></div>
+              </div>
+            </div>
+          </div>
+          <div class="chart-divider">Cost mix by dataset</div>
+          <div class="donut-grid">
+            <div class="donut-card">
+              <div class="donut-wrap" role="img" aria-label="Pi normalized cost: fresh input 14.59%, cache write 15.71%, cache read 28.82%, decode 40.88%">
+                <div class="donut" style="--gradient:conic-gradient(var(--fresh) 0 14.59%, var(--write) 14.59% 30.30%, var(--read) 30.30% 59.12%, var(--decode) 59.12% 100%)"></div>
+                <div class="donut-center"><div class="donut-total">$12.46</div><div class="donut-unit">list-price</div></div>
+              </div>
+              <div class="donut-copy">
+                <h3>Pi · Opus 4.8</h3><p>4 sessions · 185 calls · recorded $2.06（折扣价，~1/7 list）</p>
+                <div class="donut-stat"><i style="--c:var(--fresh)"></i><span>Fresh input</span><strong>14.59%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--write)"></i><span>Cache write</span><strong>15.71%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--read)"></i><span>Cache read</span><strong>28.82%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--decode)"></i><span>Decode</span><strong>40.88%</strong></div>
+              </div>
+            </div>
+            <div class="donut-card">
+              <div class="donut-wrap" role="img" aria-label="KernelBook normalized cost: fresh input 2.40%, cache write 22.79%, cache read 22.86%, decode 51.95%">
+                <div class="donut" style="--gradient:conic-gradient(var(--fresh) 0 2.40%, var(--write) 2.40% 25.19%, var(--read) 25.19% 48.05%, var(--decode) 48.05% 100%)"></div>
+                <div class="donut-center"><div class="donut-total">$163.25</div><div class="donut-unit">list-price</div></div>
+              </div>
+              <div class="donut-copy">
+                <h3>KernelBook</h3><p>300 runs · 2,426 turns</p>
+                <div class="donut-stat"><i style="--c:var(--fresh)"></i><span>Fresh input</span><strong>2.40%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--write)"></i><span>Cache write</span><strong>22.79%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--read)"></i><span>Cache read</span><strong>22.86%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--decode)"></i><span>Decode</span><strong>51.95%</strong></div>
+              </div>
+            </div>
+            <div class="donut-card">
+              <div class="donut-wrap" role="img" aria-label="OpenHands normalized cost: fresh input 0.05%, cache write 15.47%, cache read 60.24%, decode 24.23%">
+                <div class="donut" style="--gradient:conic-gradient(var(--fresh) 0 .05%, var(--write) .05% 15.53%, var(--read) 15.53% 75.77%, var(--decode) 75.77% 100%)"></div>
+                <div class="donut-center"><div class="donut-total">$124.70</div><div class="donut-unit">list-price</div></div>
+              </div>
+              <div class="donut-copy">
+                <h3>OpenHands</h3><p>16 instances · 1,225 calls</p>
+                <div class="donut-stat"><i style="--c:var(--fresh)"></i><span>Fresh input</span><strong>0.05%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--write)"></i><span>Cache write</span><strong>15.47%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--read)"></i><span>Cache read</span><strong>60.24%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--decode)"></i><span>Decode</span><strong>24.23%</strong></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <div class="column-panels">
+          <article class="panel column-panel">
+            <div class="viz-title-row" style="margin-bottom:0">
+              <div><h3 class="viz-title">Logical prefill / call</h3><div class="viz-sub">U + W + R · independent axis</div></div>
+              <span class="pill mono">max 130K</span>
+            </div>
+            <div class="column-chart" role="img" aria-label="Average logical prefill per call: Pi 42.5K, KernelBook 33.6K, OpenHands 125.2K">
+              <span class="axis-max">130K</span>
+              <div class="column-item"><span class="column-value">42.5K</span><div class="column-bar" style="--h:32.68%;--c:var(--fresh)"></div><span class="column-label">Pi</span></div>
+              <div class="column-item"><span class="column-value">33.6K</span><div class="column-bar" style="--h:25.81%;--c:var(--fresh)"></div><span class="column-label">KernelBook</span></div>
+              <div class="column-item"><span class="column-value">125.2K</span><div class="column-bar" style="--h:96.29%;--c:var(--fresh)"></div><span class="column-label">OpenHands</span></div>
+            </div>
+            <div class="scale-note">包含 cache read；表示模型面对的逻辑上下文，不等于每轮 fresh prefill compute。</div>
+          </article>
+          <article class="panel column-panel">
+            <div class="viz-title-row" style="margin-bottom:0">
+              <div><h3 class="viz-title">Decode / call</h3><div class="viz-sub">output tokens · independent axis</div></div>
+              <span class="pill mono">max 1.5K</span>
+            </div>
+            <div class="column-chart" role="img" aria-label="Average decode per call: Pi 1.10K, KernelBook 1.40K, OpenHands 0.99K">
+              <span class="axis-max">1.5K</span>
+              <div class="column-item"><span class="column-value">1.10K</span><div class="column-bar" style="--h:73.43%;--c:var(--decode)"></div><span class="column-label">Pi</span></div>
+              <div class="column-item"><span class="column-value">1.40K</span><div class="column-bar" style="--h:93.21%;--c:var(--decode)"></div><span class="column-label">KernelBook</span></div>
+              <div class="column-item"><span class="column-value">0.99K</span><div class="column-bar" style="--h:65.78%;--c:var(--decode)"></div><span class="column-label">OpenHands</span></div>
+            </div>
+            <div class="scale-note">每 call 输出更接近，但 action 类型完全不同；需结合下方 decode 饼图判断可替代区域。</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="formula">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Claude Code · API billing formula</div>
+          <h2>两种计算阶段，五个计费项</h2>
+        </div>
+        <p class="section-desc">Claude Code 使用 API key 时按每次模型调用的 token usage 计费。订阅方案包含的使用量不应用这套美元公式。</p>
+      </div>
+
+      <div class="panel formula-shell">
+        <div class="phase-map">
+          <article class="phase-card prefill-phase">
+            <div class="formula-label">Compute phase 1</div>
+            <h3>Fresh Prefill</h3>
+            <p>只有本轮真正新处理的输入会建立新 KV。Cache read 是复用已有 KV，不是再次完整 prefill。</p>
+            <div class="phase-metric cool mono">U + W₅ + W₁</div>
+            <div class="phase-subrow">
+              <span class="phase-chip">U · uncached</span>
+              <span class="phase-chip">W₅ · cache 5m</span>
+              <span class="phase-chip">W₁ · cache 1h</span>
+              <span class="phase-chip cache">R · reused context</span>
+            </div>
+          </article>
+          <div class="phase-arrow" aria-hidden="true">→</div>
+          <article class="phase-card decode-phase">
+            <div class="formula-label">Compute phase 2</div>
+            <h3>Autoregressive Decode</h3>
+            <p>回答、tool arguments 与 extended thinking 都进入 output token 口径，逐 token 生成。</p>
+            <div class="phase-metric warm mono">O</div>
+            <div class="phase-subrow">
+              <span class="phase-chip">text</span>
+              <span class="phase-chip">tool_use</span>
+              <span class="phase-chip">thinking</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="formula-card">
+          <div class="formula-label">General per-call formula</div>
+          <div class="formula-main" aria-label="每次调用成本等于各 token 数乘对应单价后除以一百万">
+            C<sub>call</sub> = [<span class="f-u">U·Pᵢₙ</span> + <span class="f-w">W₅·P₅</span> + <span class="f-w">W₁·P₁ₕ</span> + <span class="f-r">R·Pᵣ</span> + <span class="f-o">O·Pₒ</span>] / 10⁶
+          </div>
+          <div class="formula-explain">Session 总成本是所有 foreground、background 与 subagent 模型调用之和：<span class="mono">C<sub>session</sub> = Σₜ C<sub>call,t</sub></span>。</div>
+
+          <div class="pricing-strip" aria-label="Claude Opus 4.8 每百万 token 单价">
+            <div class="price-cell"><div class="price-symbol cool">U</div><div class="price-name">Base input<br>uncached</div><div class="price-number">$5 / MTok</div></div>
+            <div class="price-cell"><div class="price-symbol" style="color:var(--write)">W₅</div><div class="price-name">5-minute<br>cache write</div><div class="price-number">$6.25 / MTok</div></div>
+            <div class="price-cell"><div class="price-symbol" style="color:var(--write)">W₁</div><div class="price-name">1-hour<br>cache write</div><div class="price-number">$10 / MTok</div></div>
+            <div class="price-cell"><div class="price-symbol" style="color:var(--read)">R</div><div class="price-name">Cache hit<br>& refresh</div><div class="price-number">$0.50 / MTok</div></div>
+            <div class="price-cell"><div class="price-symbol warm">O</div><div class="price-name">Output<br>decode</div><div class="price-number">$25 / MTok</div></div>
+          </div>
+
+          <div class="chart-note">
+            <strong>为什么前面的轨迹图是四块？</strong> API 的顶层 usage 通常把 cache creation 汇总成一个 <span class="mono">W</span>；只有更细的 <span class="mono">cache_creation</span> 对象才拆出 5m/1h。公开轨迹未保留 TTL 明细，因此图中按默认 5m 价格计算 <span class="mono">W = W₅</span>。
+          </div>
+        </div>
+
+        <div class="calc-grid">
+          <article class="panel calculator">
+            <div class="calc-head">
+              <div><h3>Claude Opus 4.8 · 单次调用计算器</h3><p>输入 API response usage 中的 token 数；价格为每百万 token 美元。</p></div>
+              <span class="pill mono">API key billing</span>
+            </div>
+            <div class="preset-row" aria-label="计算器预设">
+              <button class="preset" data-preset="warm">Warm agent turn</button>
+              <button class="preset" data-preset="cold">Cold cache rebuild</button>
+              <button class="preset" data-preset="onehour">1h cache write</button>
+              <button class="preset" data-preset="output">Output-heavy edit</button>
+            </div>
+            <div class="token-inputs">
+              <div class="token-input"><label for="calcU">U<br>input_tokens</label><input id="calcU" type="number" min="0" step="100" value="1000"></div>
+              <div class="token-input"><label for="calcW5">W₅<br>cache write 5m</label><input id="calcW5" type="number" min="0" step="100" value="5000"></div>
+              <div class="token-input"><label for="calcW1">W₁<br>cache write 1h</label><input id="calcW1" type="number" min="0" step="100" value="0"></div>
+              <div class="token-input"><label for="calcR">R<br>cache read</label><input id="calcR" type="number" min="0" step="100" value="100000"></div>
+              <div class="token-input"><label for="calcO">O<br>output tokens</label><input id="calcO" type="number" min="0" step="100" value="2000"></div>
+            </div>
+          </article>
+
+          <article class="panel calc-result" aria-live="polite">
+            <div>
+              <div class="calc-total-label">Estimated API cost · one call</div>
+              <div class="calc-total" id="calcTotal">$0.1363</div>
+            </div>
+            <div class="calc-breakdown">
+              <div class="calc-row"><span class="calc-row-name">Uncached</span><div class="calc-track"><div class="calc-fill" id="barU" style="--c:var(--fresh);--w:3.7%"></div></div><span class="calc-value" id="costU">$0.0050</span></div>
+              <div class="calc-row"><span class="calc-row-name">Cache write</span><div class="calc-track"><div class="calc-fill" id="barW" style="--c:var(--write);--w:22.9%"></div></div><span class="calc-value" id="costW">$0.0313</span></div>
+              <div class="calc-row"><span class="calc-row-name">Cache read</span><div class="calc-track"><div class="calc-fill" id="barR" style="--c:var(--read);--w:36.7%"></div></div><span class="calc-value" id="costR">$0.0500</span></div>
+              <div class="calc-row"><span class="calc-row-name">Decode</span><div class="calc-track"><div class="calc-fill" id="barO" style="--c:var(--decode);--w:36.7%"></div></div><span class="calc-value" id="costO">$0.0500</span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="formula-foot">
+          <span><strong>API key / cloud provider：</strong>按 token 计费；5m cache write 默认更便宜，1h TTL 需要显式启用。</span>
+          <span><strong>Pro / Max subscription：</strong>使用量包含在计划中时，session 的美元估算不等于实际账单。</span>
+          <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noreferrer">Anthropic pricing source ↗</a>
+          <a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noreferrer">Claude Code cost guide ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="anatomy">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">01 · Strong token anatomy</div>
+          <h2>Prefill 不是一种开销</h2>
+        </div>
+        <p class="section-desc">切换 token、统一价格成本、绝对体量与每调用视角。绝对模式使用对数长度，bar 内部组成始终保持线性。</p>
+      </div>
+      <div class="panel panel-pad">
+        <div class="control-row">
+          <div class="segmented" role="group" aria-label="成本图显示模式">
+            <button class="active" data-mode="share" aria-pressed="true">Token share</button>
+            <button data-mode="cost" aria-pressed="false">Normalized cost</button>
+            <button data-mode="absolute" aria-pressed="false">Absolute volume</button>
+            <button data-mode="percall" aria-pressed="false">Per model call</button>
+          </div>
+          <div class="price-formula">
+            统一价格：<strong class="mono">$5 U · $6.25 W · $0.50 R · $25 O / 1M</strong><br>
+            精确复现 KernelBook / OpenHands 记录成本
+          </div>
+        </div>
+        <div class="legend" id="mainLegend"></div>
+        <div class="chart-rows" id="anatomyChart"></div>
+        <div class="chart-note">
+          <strong>读图：</strong> U = fresh uncached input；W = cache creation / 新 KV；R = cache read / 复用上下文；O = output / decode。
+          OpenHands 的 U=13,514 是由 prompt − cache-read − cache-write 派生。
+        </div>
+      </div>
+      <div class="insight-strip">
+        <div class="insight-num">1.94%</div>
+        <div class="insight-copy">Decode 只占 pooled token events 的很小一部分，但因单价高，它贡献了 <strong>39.98% normalized strong-model cost</strong>。</div>
+        <div class="arrow">→</div>
+        <div class="insight-num">39.98%</div>
+      </div>
+    </section>
+
+    <section id="long-trajs">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">02 · Long trajectories, turn by turn</div>
+          <h2>一根柱，就是一次强模型调用</h2>
+        </div>
+        <p class="section-desc">四条刻意挑选的长 OpenHands · Opus 4.8 轨迹。切换 Tokens / USD，观察同一轮的 U、W、R、O 构成如何因价格权重而重排。</p>
+      </div>
+
+      <div class="turn-selector" id="trajectorySelector" aria-label="选择长轨迹"></div>
+
+      <div class="panel turn-panel turn-shell">
+        <div class="turn-toolbar">
+          <div class="turn-toolbar-copy">
+            <h3 id="turnTrajectoryTitle">Long trajectory</h3>
+            <p id="turnTrajectoryMeta">每根堆叠柱代表一个 API response；横向滚动查看完整 agent loop。</p>
+          </div>
+          <div class="segmented" id="turnMode" role="group" aria-label="逐轮图显示模式">
+            <button class="active" data-turn-mode="tokens" aria-pressed="true">Token events</button>
+            <button data-turn-mode="usd" aria-pressed="false">API cost · USD</button>
+          </div>
+        </div>
+
+        <div class="turn-summary" id="turnSummary"></div>
+
+        <div class="legend" aria-label="逐轮柱状图图例">
+          <span class="legend-item"><i class="swatch" style="--c:var(--fresh)"></i>U · fresh input</span>
+          <span class="legend-item"><i class="swatch" style="--c:var(--write)"></i>W · cache write</span>
+          <span class="legend-item"><i class="swatch" style="--c:var(--read)"></i>R · cache read</span>
+          <span class="legend-item"><i class="swatch" style="--c:var(--decode)"></i>O · decode</span>
+        </div>
+
+        <div class="turn-chart-frame">
+          <div class="turn-y-axis" id="turnYAxis" aria-hidden="true"></div>
+          <div class="turn-scroll" id="turnScroll">
+            <div class="turn-plot" id="turnPlot" role="group" aria-label="逐轮堆叠柱状图，可横向滚动"><div class="turn-empty">Loading per-turn data…</div></div>
+          </div>
+        </div>
+        <div class="turn-caption">
+          <span id="turnScaleCaption"><strong>Linear scale.</strong> 高度按单轮 token events。</span>
+          <span>Hover / focus 任一轮，查看分项 token、分项美元、累计费用与 action。</span>
+        </div>
+        <div class="turn-selection-note">
+          <strong>选择偏差：</strong>这是为了看清长上下文形态而挑选的 4 个长样本，不代表总体分布。每轮费用用公开 usage 按同一 Opus 价格重算，并与 archive 中的累计成本逐条吻合；W 的 TTL 未被轨迹保留，统一按 5 分钟 cache write 计价。
+        </div>
+      </div>
+    </section>
+
+    <section id="decode">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">03 · Where decode goes</div>
+          <h2>输出几乎都在 action 里</h2>
+        </div>
+        <p class="section-desc">这是弱模型可能替代的 decode 容量，不是保持成功率后的安全替换率。KernelBook 只有 tool-call 计数，因此单独标成 proxy。</p>
+      </div>
+      <div class="decode-grid">
+        <article class="panel decode-card">
+          <div class="card-top">
+            <div>
+              <div class="card-title">Pi · Opus 4.8</div>
+              <div class="card-sub mono">203,776 output tokens · 185 calls</div>
+            </div>
+            <div class="bound">96.92%<small>tool-turn decode bound</small></div>
+          </div>
+          <div class="action-bar" id="piActionBar" aria-label="Pi decode token 分类"></div>
+          <div class="action-legend" id="piActionLegend"></div>
+        </article>
+        <article class="panel decode-card">
+          <div class="card-top">
+            <div>
+              <div class="card-title">OpenHands · Commit0</div>
+              <div class="card-sub mono">1,208,650 completion tokens · 1,225 calls</div>
+            </div>
+            <div class="bound">99.05%<small>action decode bound</small></div>
+          </div>
+          <div class="action-bar" id="ohActionBar" aria-label="OpenHands decode token 分类"></div>
+          <div class="action-legend" id="ohActionLegend"></div>
+        </article>
+        <article class="panel decode-card proxy">
+          <div class="card-top">
+            <div>
+              <div class="card-title">KernelBook · tool-call mix</div>
+              <div class="card-sub mono">2,126 calls · call count only, not output-token attribution</div>
+            </div>
+            <div class="bound" style="color:var(--violet)">2,126<small>tool calls</small></div>
+          </div>
+          <div class="action-bar" id="kbActionBar" aria-label="KernelBook tool call 数量分类"></div>
+          <div class="action-legend" id="kbActionLegend"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="cross-harness">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">04 · Cross-harness workload</div>
+          <h2>Prefill 与 Decode 的动作构成不同</h2>
+        </div>
+        <p class="section-desc">ThoughtWorks 500-session 分层样本，覆盖 SWE-agent、mini-SWE-agent、OpenHands。这里是重建的 stateless full-context prompt volume。</p>
+      </div>
+      <div class="panel panel-pad matrix">
+        <div class="control-row" style="padding-top:0">
+          <div>
+            <strong class="mono">20,067 turns</strong>
+            <span style="color:var(--muted);font-size:12px"> · 503.61M prefill · 4.66M decode</span>
+          </div>
+          <div class="pill">sample is context-length stratified</div>
+        </div>
+        <div style="padding-top:20px">
+          <div class="matrix-head">
+            <div>Action</div><div>Prefill share</div><div>Decode share</div><div>Δ decode</div>
+          </div>
+          <div id="actionMatrix"></div>
+        </div>
+        <div class="chart-note">
+          <strong>关键错位：</strong> inspect/search 占 40.3% turns、29.7% prefill，却只占 17.2% decode；edit 仅占 20.9% turns，却承载 60.0% decode。
+        </div>
+      </div>
+    </section>
+
+    <section id="levers">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">05 · Capacity bounds</div>
+          <h2>不同杠杆，省的是不同成本</h2>
+        </div>
+        <p class="section-desc">Turn routing 主要消除整次强调用；compaction 主要压 input/KV。下面是已发布轨迹上的反事实容量，不是因果 A/B。</p>
+      </div>
+      <div class="lever-grid" id="leverGrid"></div>
+    </section>
+
+    <section id="evidence">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">06 · Evidence quality</div>
+          <h2>规模不能冒充质量</h2>
+        </div>
+        <p class="section-desc">三个 Opus 数据集的任务和 outcome 口径不同。绝对 token 总量不能横向当成模型效率排名。</p>
+      </div>
+      <div class="evidence-grid">
+        <article class="panel evidence">
+          <div class="evidence-num">4 / 185</div>
+          <h3>Pi sessions / calls</h3>
+          <p>四个浏览器应用生成任务；保留完整 tool messages 与 usage，但没有统一 benchmark outcome。</p>
+          <span class="tag">small · semantically rich</span>
+        </article>
+        <article class="panel evidence">
+          <div class="evidence-num">299 / 300</div>
+          <h3>KernelBook GPU-correct</h3>
+          <p>真实 GPU judge 的 PyTorch→Triton 循环；验证很强但领域很窄，且另有少量 Haiku 辅助调用已从强模型口径排除。</p>
+          <span class="tag">grounded · narrow domain</span>
+        </article>
+        <article class="panel evidence">
+          <div class="evidence-num">10 / 16</div>
+          <h3>OpenHands resolved</h3>
+          <p>16 个 Commit0 instances；15 条有可计费 usage。action decode 99.05% 不是 99.05% 可安全降级。</p>
+          <span class="tag">repo-level · 15 usable traces</span>
+        </article>
+      </div>
+    </section>
+
+    <section id="method">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">07 · Method & provenance</div>
+          <h2>口径先于结论</h2>
+        </div>
+      </div>
+      <div class="method">
+        <article class="panel method-card">
+          <h3>这张图在算什么</h3>
+          <ul>
+            <li><strong>Token volume ≠ FLOPs ≠ provider invoice。</strong>页面同时给原始 token 与固定价格归一化成本。</li>
+            <li>Cache read 不重新做完整 prefill，但仍占上下文长度、decode attention，并产生 cache-read 费用。</li>
+            <li>重写旧 history 可能摧毁廉价 cache hit；压缩应在 phase boundary 做稳定 checkpoint。</li>
+            <li>Pi action 分类按每轮第一个 tool call；OpenHands 按 ActionEvent 对齐 response usage。</li>
+            <li>Pi 文件内记录的 $2.0635 与统一 Opus 价格不一致，因此成本视图统一重算为 $12.4617，不混用原值。</li>
+            <li>弱模型成本按用户假设置零；所有图只核算强模型侧。</li>
+          </ul>
+        </article>
+        <article class="panel method-card">
+          <h3>本地数据与复跑</h3>
+          <div class="source-links">
+            <a class="source-link" href="./opus48_metrics.json"><span>Opus 4.8 metrics</span><span>JSON ↗</span></a>
+            <a class="source-link" href="./metrics.json"><span>Cross-harness metrics</span><span>JSON ↗</span></a>
+            <a class="source-link" href="./long_trajectory_turns.json"><span>Long trajectories · per turn</span><span>JSON ↗</span></a>
+            <a class="source-link" href="../analyze_opus48.py"><span>Opus analyzer</span><span>PY ↗</span></a>
+            <a class="source-link" href="../extract_long_trajectory_turns.py"><span>Long-trajectory extractor</span><span>PY ↗</span></a>
+            <a class="source-link" href="../REPORT.zh-CN.md"><span>Research report</span><span>MD ↗</span></a>
+            <a class="source-link" href="https://huggingface.co/datasets/OpenHands/openhands-index" target="_blank" rel="noreferrer"><span>OpenHands public index</span><span>HF ↗</span></a>
+            <a class="source-link" href="https://huggingface.co/datasets/ppbhatt500/kernelbook-opus4.8-multiturn-traces" target="_blank" rel="noreferrer"><span>KernelBook Opus 4.8</span><span>HF ↗</span></a>
+            <a class="source-link" href="https://huggingface.co/datasets/armand0e/claude-opus-4.8-pi-traces" target="_blank" rel="noreferrer"><span>Pi Opus 4.8 traces</span><span>HF ↗</span></a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      <div>Open Trajectory Cost Atlas · generated from revision-pinned public traces · 三组 list-price 口径统一，可由 recompute_cost.py 复现</div>
+      <div class="mono">U fresh · W cache-write · R cache-read · O decode</div>
+    </footer>
+  </main>
+  <div class="tooltip" id="tooltip" role="status" aria-live="polite"></div>
+
+  <script src="./long_trajectory_turns.js"></script>
+  <script>
+    const COLORS = {
+      fresh: '#4fd1bd', write: '#66a7ff', read: '#7f8aa4', decode: '#ff9d62',
+      mutation: '#ff725e', shell: '#ffb45f', edit: '#f58cb5', inspect: '#4fd1bd',
+      final: '#a2ada9', tracker: '#8ca7ff', violet: '#b4a2ff'
+    };
+    const PRICES = { fresh: 5, write: 6.25, read: 0.5, decode: 25 };
+    const longTrajectoryData = window.LONG_TRAJECTORY_DATA || null;
+    let activeTrajectoryId = longTrajectoryData?.trajectories?.[0]?.id || null;
+    let activeTurnMode = 'tokens';
+    const datasets = [
+      {
+        id: 'pi', name: 'Pi · Opus 4.8', sub: '4 sessions · 185 calls · web-app coding',
+        calls: 185, trajectories: 4,
+        values: { fresh: 363622, write: 313161, read: 7183788, decode: 203776 }
+      },
+      {
+        id: 'kernelbook', name: 'KernelBook · Opus 4.8', sub: '300 runs · 2,426 model turns · GPU kernels',
+        calls: 2426, trajectories: 300,
+        values: { fresh: 783224, write: 5951565, read: 74667246, decode: 3391974 }
+      },
+      {
+        id: 'openhands', name: 'OpenHands · Commit0', sub: '16 instances · 1,225 calls · repo generation',
+        calls: 1225, trajectories: 16,
+        values: { fresh: 13514, write: 3087464, read: 150242743, decode: 1208650 }
+      }
+    ];
+    const componentLabels = {
+      fresh: 'Fresh input (U)', write: 'Cache creation (W)',
+      read: 'Cache read (R)', decode: 'Decode / output (O)'
+    };
+
+    const actionSets = {
+      pi: [
+        { name: 'write', value: 88767, color: COLORS.mutation },
+        { name: 'bash', value: 60419, color: COLORS.shell },
+        { name: 'edit', value: 32374, color: COLORS.edit },
+        { name: 'read', value: 15933, color: COLORS.inspect },
+        { name: 'final', value: 6283, color: COLORS.final }
+      ],
+      oh: [
+        { name: 'FileEditor', value: 801877, color: COLORS.mutation },
+        { name: 'Terminal', value: 373004, color: COLORS.shell },
+        { name: 'TaskTracker', value: 20753, color: COLORS.tracker },
+        { name: 'non-action', value: 11529, color: COLORS.final },
+        { name: 'Finish', value: 1487, color: COLORS.inspect }
+      ],
+      kb: [
+        { name: 'Bash', value: 1516, color: COLORS.shell },
+        { name: 'Read', value: 344, color: COLORS.inspect },
+        { name: 'Edit', value: 175, color: COLORS.edit },
+        { name: 'Write', value: 90, color: COLORS.mutation },
+        { name: 'Schedule', value: 1, color: COLORS.violet }
+      ]
+    };
+
+    const thoughtworks = [
+      { name: 'edit / write', prefill: 124315828, decode: 2794648 },
+      { name: 'inspect', prefill: 149469704, decode: 798506 },
+      { name: 'other', prefill: 173182124, decode: 808373 },
+      { name: 'verify', prefill: 50521984, decode: 162981 },
+      { name: 'submit', prefill: 6120430, decode: 90825 }
+    ];
+
+    const levers = [
+      { source: 'JetBrains · routing', title: 'No-cache strong prefill', before: 162138991, after: 47447491, reduction: 70.7, unit: 'M tokens' },
+      { source: 'JetBrains · routing', title: 'Strong decode', before: 2719044, after: 1063153, reduction: 60.9, unit: 'M tokens' },
+      { source: 'JetBrains · ideal KV', title: 'Incremental strong prefill', before: 15874611, after: 13714908, reduction: 13.6, unit: 'M tokens' },
+      { source: 'JetBrains · compression', title: 'Actual strong full prefill', before: 47447491, after: 22288137, reduction: 53.0, unit: 'M tokens' },
+      { source: 'ThoughtWorks · compression', title: 'Cross-harness full prefill', before: 503610070, after: 314958645, reduction: 37.5, unit: 'M tokens' }
+    ];
+
+    const fmt = n => new Intl.NumberFormat('en-US').format(Math.round(n));
+    const compact = n => {
+      if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+      return fmt(n);
+    };
+    const pct = n => (n * 100).toFixed(n * 100 < 1 ? 2 : 1) + '%';
+    const total = obj => Object.values(obj).reduce((a, b) => a + b, 0);
+    const prefill = obj => obj.fresh + obj.write + obj.read;
+    const costValues = obj => Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, v * PRICES[k] / 1e6]));
+
+    const mainLegend = document.getElementById('mainLegend');
+    mainLegend.innerHTML = Object.keys(componentLabels).map(k =>
+      `<span class="legend-item"><i class="swatch" style="--c:${COLORS[k]}"></i>${componentLabels[k]}</span>`
+    ).join('');
+
+    function renderAnatomy(mode = 'share') {
+      const chart = document.getElementById('anatomyChart');
+      const modeTotals = datasets.map(d => {
+        if (mode === 'cost') return total(costValues(d.values));
+        if (mode === 'percall') return total(d.values) / d.calls;
+        return total(d.values);
+      });
+      const max = Math.max(...modeTotals);
+      const logs = modeTotals.map(v => Math.log10(v + 1));
+      const minLog = Math.min(...logs);
+      const maxLog = Math.max(...logs);
+
+      chart.innerHTML = datasets.map((d, index) => {
+        const raw = d.values;
+        const values = mode === 'cost' ? costValues(raw) :
+          mode === 'percall' ? Object.fromEntries(Object.entries(raw).map(([k,v]) => [k, v / d.calls])) : raw;
+        const sum = total(values);
+        const ratio = prefill(raw) / raw.decode;
+        let outer = 100;
+        if (mode === 'absolute') outer = 22 + 78 * ((logs[index] - minLog) / Math.max(.0001, maxLog - minLog));
+        if (mode === 'percall') outer = 18 + 82 * (sum / max);
+        const label = mode === 'cost' ? `$${sum.toFixed(2)} normalized` :
+          mode === 'percall' ? `${compact(sum)} tokens / call` :
+          mode === 'absolute' ? `${compact(sum)} token events` :
+          `${compact(sum)} token events · 100%`;
+        const aux = mode === 'cost'
+          ? `input-side ${pct((values.fresh + values.write + values.read) / sum)} · decode ${pct(values.decode / sum)}`
+          : `cache read ${pct(raw.read / total(raw))} · decode ${pct(raw.decode / total(raw))}`;
+        const segments = Object.keys(componentLabels).map(k => {
+          const w = values[k] / sum * 100;
+          const valLabel = mode === 'cost' ? '$' + values[k].toFixed(3) : compact(values[k]);
+          const tip = `${d.name} · ${componentLabels[k]}\n${valLabel} · ${pct(values[k]/sum)} of this view`;
+          const directLabel = w >= 8 ? `<span class="segment-label">${k.toUpperCase()} ${pct(values[k]/sum)}</span>` : '';
+          return `<div class="segment has-tip" role="img" tabindex="0" aria-label="${componentLabels[k]}: ${valLabel}, ${pct(values[k]/sum)}" style="width:${w}%;background:${COLORS[k]}" data-tip="${tip}">${directLabel}</div>`;
+        }).join('');
+        return `
+          <div class="dataset-row">
+            <div>
+              <div class="dataset-name">${d.name}</div>
+              <div class="dataset-sub">${d.sub}</div>
+              <span class="ratio-badge">${ratio.toFixed(1)}× prefill / decode</span>
+            </div>
+            <div class="bar-line">
+              <div class="track-shell"><div class="track" style="width:${outer}%">${segments}</div></div>
+              <div class="bar-caption"><strong>${label}</strong><span>${aux}</span></div>
+            </div>
+          </div>`;
+      }).join('');
+      bindTooltips();
+    }
+
+    document.querySelectorAll('#anatomy .segmented button').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('#anatomy .segmented button').forEach(b => {
+          b.classList.toggle('active', b === button);
+          b.setAttribute('aria-pressed', b === button ? 'true' : 'false');
+        });
+        renderAnatomy(button.dataset.mode);
+      });
+    });
+
+    function renderActionBar(barId, legendId, items, kind) {
+      const sum = items.reduce((a,b) => a + b.value, 0);
+      const bar = document.getElementById(barId);
+      const legend = document.getElementById(legendId);
+      bar.innerHTML = items.map(item => {
+        const share = item.value / sum;
+        const visible = share > .07 ? (share*100).toFixed(1) + '%' : '';
+        const unit = kind === 'calls' ? 'calls' : 'tokens';
+        return `<div class="action-seg has-tip" role="img" tabindex="0" aria-label="${item.name}: ${fmt(item.value)} ${unit}, ${pct(share)}" style="width:${share*100}%;background-color:${item.color}" data-tip="${item.name}\n${fmt(item.value)} ${unit} · ${pct(share)}">${visible}</div>`;
+      }).join('');
+      legend.innerHTML = items.map(item =>
+        `<span class="legend-item"><i class="swatch" style="--c:${item.color}"></i>${item.name} <span class="mono">${pct(item.value/sum)}</span></span>`
+      ).join('');
+    }
+    renderActionBar('piActionBar', 'piActionLegend', actionSets.pi, 'tokens');
+    renderActionBar('ohActionBar', 'ohActionLegend', actionSets.oh, 'tokens');
+    renderActionBar('kbActionBar', 'kbActionLegend', actionSets.kb, 'calls');
+
+    const twPrefill = thoughtworks.reduce((a,b) => a + b.prefill, 0);
+    const twDecode = thoughtworks.reduce((a,b) => a + b.decode, 0);
+    document.getElementById('actionMatrix').innerHTML = thoughtworks.map(row => {
+      const ps = row.prefill / twPrefill * 100;
+      const ds = row.decode / twDecode * 100;
+      const delta = ds - ps;
+      return `
+        <div class="matrix-row">
+          <div class="matrix-label">${row.name}</div>
+          <div class="micro-wrap">
+            <div class="micro-track"><div class="micro-fill" style="--w:${ps}%;--c:${COLORS.fresh}"></div></div>
+            <div class="micro-value">${ps.toFixed(1)}%</div>
+          </div>
+          <div class="micro-wrap">
+            <div class="micro-track"><div class="micro-fill" style="--w:${ds}%;--c:${COLORS.decode}"></div></div>
+            <div class="micro-value">${ds.toFixed(1)}%</div>
+          </div>
+          <div class="delta ${delta > 0 ? 'pos' : 'neg'}">${delta > 0 ? '+' : ''}${delta.toFixed(1)} pp</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('leverGrid').innerHTML = levers.map((x, i) => {
+      const afterPct = x.after / x.before * 100;
+      return `
+        <article class="panel lever">
+          <div class="lever-source">${x.source}</div>
+          <div class="lever-title">${x.title}</div>
+          <div class="before-after">
+            <div class="ba-line"><span class="ba-label">before</span><div class="ba-track"><div class="ba-fill" style="--w:100%;--c:${COLORS.read}"></div></div></div>
+            <div class="ba-line"><span class="ba-label">after</span><div class="ba-track"><div class="ba-fill" style="--w:${afterPct}%;--c:${i === 2 ? COLORS.shell : COLORS.fresh}"></div></div></div>
+          </div>
+          <div class="lever-value">−${x.reduction.toFixed(1)}%</div>
+          <div class="lever-detail mono">${compact(x.before)} → ${compact(x.after)}</div>
+        </article>`;
+    }).join('');
+
+    const calcInputs = {
+      U: document.getElementById('calcU'),
+      W5: document.getElementById('calcW5'),
+      W1: document.getElementById('calcW1'),
+      R: document.getElementById('calcR'),
+      O: document.getElementById('calcO')
+    };
+    const calculatorPresets = {
+      warm: { U: 1000, W5: 5000, W1: 0, R: 100000, O: 2000 },
+      cold: { U: 0, W5: 100000, W1: 0, R: 0, O: 2000 },
+      onehour: { U: 1000, W5: 0, W1: 100000, R: 0, O: 2000 },
+      output: { U: 1000, W5: 5000, W1: 0, R: 50000, O: 20000 }
+    };
+    const money = n => '$' + n.toFixed(n < .01 ? 6 : 4);
+    function updateCalculator() {
+      const n = Object.fromEntries(Object.entries(calcInputs).map(([k, el]) => [k, Math.max(0, Number(el.value) || 0)]));
+      const parts = {
+        U: n.U * 5 / 1e6,
+        W: (n.W5 * 6.25 + n.W1 * 10) / 1e6,
+        R: n.R * .5 / 1e6,
+        O: n.O * 25 / 1e6
+      };
+      const sum = Object.values(parts).reduce((a,b) => a+b, 0);
+      document.getElementById('calcTotal').textContent = money(sum);
+      for (const k of ['U','W','R','O']) {
+        document.getElementById('cost' + k).textContent = money(parts[k]);
+        document.getElementById('bar' + k).style.setProperty('--w', (sum ? parts[k] / sum * 100 : 0) + '%');
+      }
+    }
+    Object.values(calcInputs).forEach(input => input.addEventListener('input', updateCalculator));
+    document.querySelectorAll('.preset').forEach(button => button.addEventListener('click', () => {
+      const preset = calculatorPresets[button.dataset.preset];
+      Object.entries(preset).forEach(([k,v]) => { calcInputs[k].value = v; });
+      updateCalculator();
+    }));
+    updateCalculator();
+
+    const tooltip = document.getElementById('tooltip');
+    function positionTooltip(x, y) {
+      const margin = 12;
+      const maxX = Math.max(margin, window.innerWidth - tooltip.offsetWidth - margin);
+      const maxY = Math.max(margin, window.innerHeight - tooltip.offsetHeight - margin);
+      tooltip.style.left = Math.max(margin, Math.min(x, maxX)) + 'px';
+      tooltip.style.top = Math.max(margin, Math.min(y, maxY)) + 'px';
+    }
+    function showTooltip(content, x, y) {
+      tooltip.textContent = content;
+      tooltip.classList.add('show');
+      positionTooltip(x, y);
+    }
+    function bindTooltips() {
+      document.querySelectorAll('.has-tip').forEach(el => {
+        if (el.dataset.tooltipBound === 'true') return;
+        el.dataset.tooltipBound = 'true';
+        el.addEventListener('mouseenter', event => {
+          showTooltip(el.dataset.tip, event.clientX + 12, event.clientY + 12);
+        });
+        el.addEventListener('focus', () => {
+          const rect = el.getBoundingClientRect();
+          showTooltip(el.dataset.tip, rect.left, rect.bottom + 8);
+        });
+        el.addEventListener('mousemove', e => {
+          positionTooltip(e.clientX + 12, e.clientY + 12);
+        });
+        el.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+        el.addEventListener('blur', () => tooltip.classList.remove('show'));
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Escape') { tooltip.classList.remove('show'); el.blur(); }
+        });
+      });
+    }
+
+    function safeText(value) {
+      const node = document.createElement('span');
+      node.textContent = String(value ?? '');
+      return node.innerHTML.replace(/'/g, '&#39;');
+    }
+
+    function perTurnTokenParts(turn) {
+      return {
+        fresh: turn.u,
+        write: turn.w5 + turn.w1,
+        read: turn.r,
+        decode: turn.o
+      };
+    }
+
+    function perTurnCostParts(turn) {
+      const prices = longTrajectoryData?.prices_per_mtok || {};
+      return {
+        fresh: turn.u * (prices.uncached_input ?? 5) / 1e6,
+        write: (turn.w5 * (prices.cache_write_5m ?? 6.25) + turn.w1 * (prices.cache_write_1h ?? 10)) / 1e6,
+        read: turn.r * (prices.cache_read ?? .5) / 1e6,
+        decode: turn.o * (prices.output ?? 25) / 1e6
+      };
+    }
+
+    function turnMoney(value, axis = false) {
+      if (axis) {
+        const digits = value >= 1 ? 2 : value >= .1 ? 3 : 4;
+        return '$' + value.toFixed(digits);
+      }
+      const digits = value >= 10 ? 2 : value >= 1 ? 3 : value >= .1 ? 4 : 5;
+      return '$' + value.toFixed(digits);
+    }
+
+    function activeLongTrajectory() {
+      return longTrajectoryData?.trajectories?.find(item => item.id === activeTrajectoryId)
+        || longTrajectoryData?.trajectories?.[0]
+        || null;
+    }
+
+    function renderTrajectorySelector(focusActive = false) {
+      const selector = document.getElementById('trajectorySelector');
+      if (!selector) return;
+      const trajectories = longTrajectoryData?.trajectories || [];
+      selector.innerHTML = trajectories.map(trajectory => {
+        const name = trajectory.id.replace(/^openhands-/, '');
+        const active = trajectory.id === activeTrajectoryId;
+        const outcomeClass = trajectory.outcome === 1 ? '' : ' near-miss';
+        const ratio = Number.isFinite(trajectory.cache_read_to_output_ratio)
+          ? trajectory.cache_read_to_output_ratio.toFixed(1) + '×'
+          : '—';
+        return `<button class='turn-choice${active ? ' active' : ''}' data-trajectory='${safeText(trajectory.id)}' aria-pressed='${active}' aria-label='选择 ${safeText(name)} 轨迹'>
+          <span class='turn-choice-top'>
+            <span class='turn-choice-title'>${safeText(name)}</span>
+            <span class='turn-outcome${outcomeClass}'>${safeText(trajectory.outcome_label)}</span>
+          </span>
+          <span class='turn-choice-stats'><span><strong>${fmt(trajectory.turns?.length ?? trajectory.calls)}</strong> calls</span><span><strong>${turnMoney(trajectory.normalized_cost_usd)}</strong></span><span>R/O <strong>${ratio}</strong></span></span>
+        </button>`;
+      }).join('');
+      selector.querySelectorAll('.turn-choice').forEach(button => {
+        button.addEventListener('click', () => {
+          activeTrajectoryId = button.dataset.trajectory;
+          renderLongTrajectory(true, true);
+        });
+      });
+      if (focusActive) {
+        requestAnimationFrame(() => selector.querySelector('.turn-choice.active')?.focus());
+      }
+    }
+
+    function renderTurnSummary(trajectory) {
+      const totals = trajectory.totals;
+      const tokenTotal = trajectory.token_events;
+      const costParts = perTurnCostParts(totals);
+      const totalCost = total(costParts);
+      const ratio = Number.isFinite(trajectory.cache_read_to_output_ratio)
+        ? trajectory.cache_read_to_output_ratio.toFixed(1) + '×'
+        : '—';
+      const outcomeValue = trajectory.outcome === 1
+        ? 'PASS'
+        : trajectory.outcome == null ? 'N/A' : (trajectory.outcome * 100).toFixed(1) + '%';
+      const cards = [
+        ['Model calls', fmt(trajectory.turns?.length ?? trajectory.calls), 'one bar per response'],
+        ['Token events', compact(tokenTotal), fmt(tokenTotal) + ' total'],
+        ['Strong API cost', turnMoney(totalCost), 'decode ' + pct(costParts.decode / totalCost)],
+        ['Cache read / output', ratio, tokenTotal ? pct(totals.r / tokenTotal) + ' of token events' : '—'],
+        ['Benchmark outcome', outcomeValue, trajectory.outcome_label]
+      ];
+      document.getElementById('turnSummary').innerHTML = cards.map(card => `<div class='turn-stat'>
+        <div class='turn-stat-label'>${safeText(card[0])}</div>
+        <div class='turn-stat-value'>${safeText(card[1])}</div>
+        <div class='turn-stat-note'>${safeText(card[2])}</div>
+      </div>`).join('');
+    }
+
+    function renderTurnChart(trajectory) {
+      const plot = document.getElementById('turnPlot');
+      const axis = document.getElementById('turnYAxis');
+      const isCost = activeTurnMode === 'usd';
+      const turns = Array.isArray(trajectory.turns) ? trajectory.turns : [];
+      if (!turns.length) {
+        plot.innerHTML = `<div class='turn-empty'>This trajectory has no model-call usage rows.</div>`;
+        axis.innerHTML = '';
+        return;
+      }
+      const callCount = turns.length;
+      const values = turns.map(turn => isCost ? perTurnCostParts(turn) : perTurnTokenParts(turn));
+      const turnTotals = values.map(parts => total(parts));
+      const maxValue = Math.max(...turnTotals, 0);
+      const peakIndex = turnTotals.indexOf(maxValue);
+      const peakTurn = turns[peakIndex];
+      const barWidth = callCount > 200 ? 6 : callCount > 140 ? 7 : 9;
+      const plotWidth = Math.max(860, callCount * (barWidth + 3) + 24);
+      const tickEvery = callCount > 180 ? 25 : 10;
+      let cumulativeCost = 0;
+
+      plot.style.minWidth = plotWidth + 'px';
+      plot.style.setProperty('--turn-bar-width', barWidth + 'px');
+      plot.setAttribute('aria-label', `${trajectory.title}, ${callCount} calls, ${isCost ? 'USD cost' : 'token events'} per call; use left and right arrow keys to move between calls`);
+      plot.innerHTML = turns.map((turn, index) => {
+        const parts = values[index];
+        const turnTotal = turnTotals[index];
+        const tokenParts = perTurnTokenParts(turn);
+        const tokenSum = total(tokenParts);
+        const costParts = perTurnCostParts(turn);
+        const costSum = total(costParts);
+        cumulativeCost += costSum;
+        const inputTotal = turn.u + turn.w5 + turn.w1 + turn.r;
+        const cacheHit = inputTotal ? turn.r / inputTotal : 0;
+        const height = maxValue ? Math.max(1, turnTotal / maxValue * 338) : 0;
+        const stacks = Object.entries(parts).map(([key, value]) => {
+          const share = turnTotal ? value / turnTotal * 100 : 0;
+          return `<span class='turn-stack' style='height:${share}%;background:${COLORS[key]}'></span>`;
+        }).join('');
+        const tick = turn.turn === 1 || index === callCount - 1 || turn.turn % tickEvery === 0;
+        const response = turn.response_id || 'response id unavailable';
+        const tip = [
+          `Turn ${turn.turn} / ${callCount} · ${turn.action}`,
+          `tokens  U ${fmt(turn.u)} · W5 ${fmt(turn.w5)} · W1 ${fmt(turn.w1)} · R ${fmt(turn.r)} · O ${fmt(turn.o)}`,
+          `cost    U ${turnMoney(costParts.fresh)} · W ${turnMoney(costParts.write)} · R ${turnMoney(costParts.read)} · O ${turnMoney(costParts.decode)}`,
+          `turn ${turnMoney(costSum)} · cumulative ${turnMoney(cumulativeCost)}`,
+          `cache-read share of input ${pct(cacheHit)}`,
+          response
+        ].join('\n');
+        const aria = `Turn ${turn.turn}, ${turn.action}, ${fmt(tokenSum)} token events, ${turnMoney(costSum)}, cumulative ${turnMoney(cumulativeCost)}`;
+        return `<div class='turn-column'>
+          <div class='turn-bar-wrap has-tip' role='img' tabindex='${index === 0 ? 0 : -1}' aria-label='${safeText(aria)}' data-tip='${safeText(tip)}'>
+            <div class='turn-bar' style='height:${height}px'>${stacks}</div>
+          </div>
+          <div class='turn-index${tick ? '' : ' muted'}' aria-hidden='true'>${tick ? turn.turn : '·'}</div>
+        </div>`;
+      }).join('');
+
+      const turnBars = [...plot.querySelectorAll('.turn-bar-wrap')];
+      turnBars.forEach((bar, index) => {
+        bar.addEventListener('focus', () => {
+          turnBars.forEach(item => { item.tabIndex = item === bar ? 0 : -1; });
+        });
+        bar.addEventListener('keydown', event => {
+          let next = index;
+          if (event.key === 'ArrowRight') next = Math.min(turnBars.length - 1, index + 1);
+          else if (event.key === 'ArrowLeft') next = Math.max(0, index - 1);
+          else if (event.key === 'Home') next = 0;
+          else if (event.key === 'End') next = turnBars.length - 1;
+          else return;
+          event.preventDefault();
+          turnBars[next].focus();
+          turnBars[next].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        });
+      });
+
+      axis.innerHTML = `<span class='turn-y-title'>${isCost ? 'USD / call' : 'tokens / call'}</span>`
+        + [0, 1, 2, 3, 4].map(step => {
+          const value = maxValue * (1 - step / 4);
+          const label = isCost ? turnMoney(value, true) : compact(value);
+          return `<span class='turn-y-label' style='top:${step * 85}px'>${label}</span>`;
+        }).join('');
+      document.getElementById('turnScaleCaption').innerHTML = isCost
+        ? `<strong>Linear USD scale.</strong> 每段高度 = token × 单价；峰值 turn ${peakTurn.turn} · ${turnMoney(maxValue, true)}。`
+        : `<strong>Linear token scale.</strong> 每段高度 = 实际 token events；峰值 turn ${peakTurn.turn} · ${compact(maxValue)}。`;
+      bindTooltips();
+    }
+
+    function renderLongTrajectory(resetScroll = false, focusSelector = false) {
+      const trajectory = activeLongTrajectory();
+      if (!trajectory) {
+        document.getElementById('turnPlot').innerHTML = `<div class='turn-empty'>Per-turn data file was not loaded.</div>`;
+        return;
+      }
+      activeTrajectoryId = trajectory.id;
+      renderTrajectorySelector(focusSelector);
+      renderTurnSummary(trajectory);
+      document.getElementById('turnTrajectoryTitle').textContent = trajectory.title;
+      document.getElementById('turnTrajectoryMeta').textContent = `${trajectory.dataset} · ${trajectory.calls} calls · ${trajectory.outcome_label}`;
+      renderTurnChart(trajectory);
+      if (resetScroll) document.getElementById('turnScroll').scrollLeft = 0;
+    }
+
+    document.querySelectorAll('#turnMode button').forEach(button => {
+      button.addEventListener('click', () => {
+        activeTurnMode = button.dataset.turnMode;
+        document.querySelectorAll('#turnMode button').forEach(item => {
+          const active = item === button;
+          item.classList.toggle('active', active);
+          item.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        renderLongTrajectory(false);
+      });
+    });
+
+    renderAnatomy('share');
+    renderLongTrajectory();
+    bindTooltips();
+  </script>
+</body>
+</html>
