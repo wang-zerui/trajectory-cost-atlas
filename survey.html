@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Turn-Level Strong/Weak Routing · Literature Survey</title>
+  <style>
+    :root {
+      --bg: #07110f;
+      --panel: rgba(14, 29, 26, 0.86);
+      --panel-2: #10241f;
+      --line: rgba(190, 231, 218, 0.14);
+      --line-strong: rgba(190, 231, 218, 0.24);
+      --text: #edf7f3;
+      --muted: #91aaa2;
+      --fresh: #4fd1bd;
+      --write: #66a7ff;
+      --read: #7f8aa4;
+      --decode: #ff9d62;
+      --decode-2: #ff725e;
+      --lime: #b9ee7d;
+      --violet: #b4a2ff;
+      --shadow: 0 24px 80px rgba(0,0,0,.28);
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; color: var(--text);
+      background:
+        radial-gradient(circle at 14% 0%, rgba(79, 209, 189, .12), transparent 28rem),
+        radial-gradient(circle at 88% 4%, rgba(255, 157, 98, .10), transparent 26rem),
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
+        var(--bg);
+      background-size: auto, auto, 32px 32px, 32px 32px, auto;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.62;
+    }
+    a { color: var(--fresh); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .page { width: min(1080px, calc(100% - 36px)); margin: 0 auto; padding: 28px 0 70px; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 4px 2px 28px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 760; letter-spacing: -.02em; }
+    .brand-mark { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; color: #06110e;
+      background: linear-gradient(135deg, var(--fresh), var(--lime)); box-shadow: 0 0 26px rgba(79, 209, 189, .25);
+      font: 900 13px/1 "SFMono-Regular", monospace; }
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .nav a { color: var(--muted); font-size: 13px; padding: 7px 10px; border: 1px solid transparent; border-radius: 999px; }
+    .nav a:hover { color: var(--text); border-color: var(--line-strong); text-decoration: none; }
+
+    .hero { position: relative; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 28px;
+      padding: clamp(28px, 5vw, 56px);
+      background: linear-gradient(115deg, rgba(24, 52, 45, .96), rgba(10, 24, 21, .96)), var(--panel);
+      box-shadow: var(--shadow); }
+    .hero::after { content: ""; position: absolute; width: 420px; height: 420px; border: 1px solid rgba(185,238,125,.18);
+      border-radius: 50%; right: -210px; top: -245px; box-shadow: 0 0 0 50px rgba(79,209,189,.035), 0 0 0 105px rgba(79,209,189,.025); pointer-events: none; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--lime); font: 700 11px/1.2 "SFMono-Regular", monospace;
+      letter-spacing: .11em; text-transform: uppercase; padding: 8px 10px; border-radius: 999px;
+      background: rgba(185, 238, 125, .08); border: 1px solid rgba(185, 238, 125, .2); }
+    .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+    h1 { max-width: 860px; margin: 22px 0 16px; font-size: clamp(32px, 5.5vw, 60px); line-height: 1.02; letter-spacing: -.05em; }
+    h1 .warm { color: var(--decode); }
+    .hero-copy { max-width: 760px; color: #b8cbc4; font-size: clamp(15px, 2vw, 19px); margin: 0; }
+    .hero-copy strong { color: var(--text); font-weight: 720; }
+    .hero-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+    .pill { color: #bfd1ca; border: 1px solid var(--line); background: rgba(4, 14, 11, .24); padding: 8px 11px; border-radius: 10px; font-size: 12px; }
+
+    section { margin-top: 52px; scroll-margin-top: 20px; }
+    .section-head { margin: 0 2px 20px; }
+    .section-kicker { color: var(--fresh); font: 700 11px/1 "SFMono-Regular", monospace; letter-spacing: .1em; text-transform: uppercase; }
+    h2 { margin: 9px 0 6px; font-size: clamp(24px, 4vw, 36px); line-height: 1.08; letter-spacing: -.04em; }
+    .section-desc { max-width: 720px; margin: 0; color: var(--muted); font-size: 14px; }
+
+    .verdict { border: 1px solid rgba(255,157,98,.22); border-radius: var(--radius);
+      background: linear-gradient(90deg, rgba(255,157,98,.09), rgba(255,157,98,.02)); padding: 22px 24px; margin-top: 22px; }
+    .verdict h3 { margin: 0 0 8px; font-size: 15px; color: var(--decode); letter-spacing: .02em; }
+    .verdict p { margin: 0 0 8px; color: #d6e4de; font-size: 14px; }
+    .verdict p:last-child { margin-bottom: 0; }
+    .verdict strong { color: var(--text); }
+
+    .paper { border: 1px solid var(--line); border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(17, 39, 34, .9), rgba(9, 23, 20, .9)); box-shadow: 0 16px 45px rgba(0,0,0,.14);
+      padding: clamp(20px, 3vw, 30px); margin-bottom: 16px; }
+    .paper-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .paper-title { font-size: 20px; font-weight: 760; letter-spacing: -.02em; margin: 0; }
+    .paper-sub { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+    .badge { flex: 0 0 auto; padding: 6px 10px; border-radius: 999px; font: 700 10px/1 "SFMono-Regular", monospace;
+      text-transform: uppercase; letter-spacing: .06em; border: 1px solid; }
+    .badge.tier1 { color: var(--lime); border-color: rgba(185,238,125,.35); background: rgba(185,238,125,.08); }
+    .badge.tier2 { color: var(--write); border-color: rgba(102,167,255,.35); background: rgba(102,167,255,.08); }
+    .badge.tier3 { color: var(--read); border-color: rgba(127,138,164,.35); background: rgba(127,138,164,.10); }
+    .badge.warn { color: var(--decode); border-color: rgba(255,157,98,.35); background: rgba(255,157,98,.08); }
+
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 20px; }
+    .box { border: 1px solid var(--line); border-radius: 14px; background: rgba(4,14,11,.28); padding: 15px 16px; min-width: 0; }
+    .box-label { color: var(--muted); font: 700 10px/1 "SFMono-Regular", monospace; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 9px; display: flex; align-items: center; gap: 7px; }
+    .box-label i { width: 7px; height: 7px; border-radius: 2px; }
+    .box p { margin: 0; font-size: 13.5px; color: #d3e2dc; }
+    .box.bg .box-label i { background: var(--read); }
+    .box.mo .box-label i { background: var(--decode); }
+    .box.me .box-label i { background: var(--fresh); }
+    .box.re .box-label i { background: var(--lime); }
+    .relate { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: rgba(79,209,189,.055); border: 1px solid rgba(79,209,189,.14); font-size: 13px; color: #bfd6cf; }
+    .relate strong { color: var(--fresh); }
+    .links { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .links a { padding: 6px 11px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; color: #cfe0da; }
+    .links a:hover { border-color: var(--line-strong); text-decoration: none; }
+
+    .idea-map { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+    .idea-card { border: 1px solid var(--line); border-radius: 16px; padding: 20px; background: rgba(4,14,11,.25); }
+    .idea-card h3 { margin: 0 0 8px; font-size: 15px; }
+    .idea-card p { margin: 0; color: var(--muted); font-size: 13px; }
+    .idea-card.hit { border-color: rgba(255,114,94,.28); background: linear-gradient(160deg, rgba(255,114,94,.08), rgba(4,14,11,.3)); }
+    .idea-card.hit h3 { color: var(--decode-2); }
+
+    .costbar { display: flex; height: 40px; border-radius: 11px; overflow: hidden; margin: 16px 0 6px; background: rgba(255,255,255,.04); }
+    .costseg { display: grid; place-items: center; color: #07110f; font: 800 11px/1 "SFMono-Regular", monospace; }
+    .cost-note { color: var(--muted); font-size: 12px; }
+
+    footer { margin-top: 44px; padding: 20px 2px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 18px; color: var(--muted); font-size: 11.5px; flex-wrap: wrap; }
+
+    @media (max-width: 760px) {
+      .grid, .idea-map { grid-template-columns: 1fr; }
+      .nav { display: none; }
+      .hero { padding: 26px 20px; border-radius: 22px; }
+      footer { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="topbar">
+      <div class="brand"><span class="brand-mark">↹</span> Turn-Level Routing Survey</div>
+      <nav class="nav" aria-label="导航">
+        <a href="#idea">核心想法</a>
+        <a href="#verdict">判定</a>
+        <a href="#tier1">Agent-loop 路由</a>
+        <a href="#tier2">Reasoning-step 路由</a>
+        <a href="#tier3">相关工作</a>
+        <a href="./index.html">← 成本图</a>
+      </nav>
+    </div>
+
+    <header class="hero">
+      <span class="eyebrow">Literature survey · 2026-07-04</span>
+      <h1>把贵模型的 <span class="warm">decode</span> 换成便宜的 prefill——<br>这个 turn 级路由想法,已经有人做了吗?</h1>
+      <p class="hero-copy">
+        调研 <strong>turn / step 级 strong-weak 模型路由</strong> 的现有工作。核心问题:在 agent loop 里把某些 turn 交给弱模型,
+        用 <strong>「decode ($25/M) 贵且不可缓存,而 cache-write ($6.25/M) 便宜」</strong> 这个价差作为路由信号——这一点是否已被发表?
+      </p>
+      <div class="hero-meta">
+        <span class="pill mono">9 篇核实过的论文</span>
+        <span class="pill">Codex gpt-5.6-sol + 独立核查</span>
+        <span class="pill">turn / step-level focus</span>
+      </div>
+    </header>
+
+    <!-- 核心想法 + 成本套利 -->
+    <section id="idea">
+      <div class="section-head">
+        <div class="section-kicker">The idea under test</div>
+        <h2>被检验的具体想法</h2>
+        <p class="section-desc">先把想法拆成两半——哪半是老生常谈、哪半可能是新的。</p>
+      </div>
+      <div class="idea-map">
+        <div class="idea-card">
+          <h3>① turn 级换模型(已成熟)</h3>
+          <p>agent loop 里每个 turn 从模型池选强/弱模型。这部分被大量工作覆盖(见下方 Tier 1/2),<b style="color:#d3e2dc">不新</b>。</p>
+        </div>
+        <div class="idea-card hit">
+          <h3>② 用 decode↔cache-write 价差当路由信号(空白)</h3>
+          <p>把「本 turn 预测 decode 量 × $25」和「之后强模型重吸收该输出的 cache-write × $6.25」直接放进路由目标函数。<b style="color:#ffd7c2">目前没有论文把它当正向套利信号。</b></p>
+        </div>
+      </div>
+
+      <div class="costbar" aria-label="成本对比">
+        <div class="costseg" style="flex:11.25;background:var(--fresh)">弱模型生成 + 灌入强模型 ≈ $11.25 / 1M</div>
+        <div class="costseg" style="flex:13.75;background:var(--decode)">强模型直接 decode = $25 / 1M</div>
+      </div>
+      <p class="cost-note mono">
+        1M output tokens:Haiku 生成 ($5) + Opus cache-write 吸收 ($6.25) ≈ <b style="color:var(--fresh)">$11.25</b> · vs Opus 直接 decode <b style="color:var(--decode)">$25</b> —— 结构性套利 ~55%(前提:弱输出够好 + 强模型缓存未过期)。定价来自 Anthropic prompt-caching 官方页。
+      </p>
+    </section>
+
+    <!-- 判定 -->
+    <section id="verdict">
+      <div class="section-head">
+        <div class="section-kicker">Verdict</div>
+        <h2>结论:部分覆盖</h2>
+      </div>
+      <div class="verdict">
+        <h3>◆ turn 级 strong/weak 路由本身——已成熟</h3>
+        <p>MTRouter、TwinRouterBench、TRIM、STEER、Router-R1 都在做 turn/step 级选模型。"按 turn 换模型"不是新贡献。</p>
+        <h3 style="margin-top:14px">◆ decode-cost-aware + cache-state-aware 的路由策略——空白</h3>
+        <p>这些工作大多<strong>优化 FLOPs/token 或按难度路由</strong>;唯一碰到 prompt cache 的是 <strong>MTRouter</strong>,却把缓存丢失当成"缺点要规避",<strong>而不是把 decode-vs-write 的价差当成要利用的套利信号</strong>。没有一篇把"预测 decode 量 × 单价差"作为正向路由目标。</p>
+        <p style="color:var(--lime)">→ 这就是你想法里真正没被占的那一格。</p>
+      </div>
+    </section>
+
+    <!-- TIER 1 -->
+    <section id="tier1">
+      <div class="section-head">
+        <div class="section-kicker">Tier 1 · closest</div>
+        <h2>Agent loop 里的 turn 级路由</h2>
+        <p class="section-desc">最贴近你想法的一类:在面向环境的多轮 agent 里,每个 turn 选模型。</p>
+      </div>
+
+      <!-- MTRouter -->
+      <article class="paper">
+        <div class="paper-head">
+          <div>
+            <h3 class="paper-title">MTRouter — Cost-Aware Multi-Turn LLM Routing</h3>
+            <div class="paper-sub mono">Yiqun Zhang et al. · ACL 2026 Main · arXiv 2604.23530</div>
+          </div>
+          <span class="badge tier1">最相关</span>
+        </div>
+        <div class="grid">
+          <div class="box bg"><div class="box-label"><i></i>背景</div><p>长程多轮任务需要大量顺序模型调用,推理成本累积。现有 router 多按整条 query 路由,没有 turn 粒度。</p></div>
+          <div class="box mo"><div class="box-label"><i></i>Motivation</div><p>在固定成本预算下,每个 turn 从模型池选最合适的模型——不同 turn 难度差异大,应差异化分配。</p></div>
+          <div class="box me"><div class="box-label"><i></i>方法</div><p>把交互历史与候选模型编码成「历史-模型联合嵌入」,从日志轨迹学一个 outcome estimator 预测 turn 级效用,据此选模型。</p></div>
+          <div class="box re"><div class="box-label"><i></i>结果</div><p>ScienceWorld 上超过 GPT-5 同时省 <b>58.7%</b>;HLE 上省 <b>43.4%</b>。且切换更少、对瞬时错误更容忍、模型间出现自发分工。</p></div>
+        </div>
+        <div class="relate"><strong>与你的想法:</strong>它在 Limitations 里<b>明确讨论了切换导致的 prompt cache / KV 丢失</b>,并靠"少切换、切换更稳"来缓解——但它把缓存丢失当成<b>要规避的缺点</b>,而不是像你那样把 decode↔cache-write 的价差当成<b>要利用的套利信号</b>。这正是分水岭。</div>
+        <div class="links">
+          <a href="https://arxiv.org/abs/2604.23530" target="_blank" rel="noreferrer">arXiv ↗</a>
+          <a href="https://aclanthology.org/2026.acl-long.2045/" target="_blank" rel="noreferrer">ACL Anthology ↗</a>
+          <a href="https://github.com/ZhangYiqun018/MTRouter" target="_blank" rel="noreferrer">GitHub ↗</a>
+        </div>
+      </article>
+
+      <!-- TwinRouterBench -->
+      <article class="paper">
+        <div class="paper-head">
+          <div>
+            <h3 class="paper-title">TwinRouterBench — Static & Live Dynamic Eval for Agentic Routing</h3>
+            <div class="paper-sub mono">Pei Yang et al. (17 authors) · 2026 · arXiv 2605.18859</div>
+          </div>
+          <span class="badge tier1">你们仓库用的数据集</span>
+        </div>
+        <div class="grid">
+          <div class="box bg"><div class="box-label"><i></i>背景</div><p>现有路由 benchmark 只测一次性 prompt、靠在线 LLM judge 评分,不反映长程 agent 的真实路由。</p></div>
+          <div class="box mo"><div class="box-label"><i></i>Motivation</div><p>做一个 step-level 路由 benchmark,用 execution-verified 目标 + 真实 API 花费,评估 coding agent / deep research 里的路由。</p></div>
+          <div class="box me"><div class="box-label"><i></i>方法</div><p>双轨:static 轨(520 实例、970 个 router-visible prefix,SWE-bench/BFCL/mtRAG 等,确定性打分)+ dynamic 轨(SWE-bench Verified 实跑)。每个 LLM call 从锁定池选模型。</p></div>
+          <div class="box re"><div class="box-label"><i></i>结果</div><p>提供一个可复现的 per-call 路由评测框架,测"官方任务解决率 + 实际 API spend"。你们本地那份轨迹成本分析正是基于此数据。</p></div>
+        </div>
+        <div class="relate"><strong>与你的想法:</strong>最接近的"桥"——per-call agent 路由 + 真实花费。<b style="color:var(--decode)">存疑更正:</b>论文摘要层面只提"realized API spend / token costs",<b>未明写 fresh/cache-read/cache-write/output 四桶拆分</b>($5/$0.5/$6.25/$25 四档是在你们本地数据/代码里体现的)。它<b>没有把"预测 decode 量 / output-to-write 比值"当作路由信号</b>。</div>
+        <div class="links">
+          <a href="https://arxiv.org/abs/2605.18859" target="_blank" rel="noreferrer">arXiv ↗</a>
+        </div>
+      </article>
+
+      <!-- Router-R1 -->
+      <article class="paper">
+        <div class="paper-head">
+          <div>
+            <h3 class="paper-title">Router-R1 — Multi-Round Routing & Aggregation via RL</h3>
+            <div class="paper-sub mono">Haozhen Zhang, Tao Feng, Jiaxuan You · NeurIPS 2025 · arXiv 2506.09033</div>
+          </div>
+          <span class="badge tier1">多轮</span>
+        </div>
+        <div class="grid">
+          <div class="box bg"><div class="box-label"><i></i>背景</div><p>已有 router 多是"单轮、一对一"映射:一条 query 选一个模型,不能组合多个模型的能力。</p></div>
+          <div class="box mo"><div class="box-label"><i></i>Motivation</div><p>把多模型路由 + 聚合建模成序列决策过程,让 router 本身是个 LLM,交替"思考"与"调用模型"。</p></div>
+          <div class="box me"><div class="box-label"><i></i>方法</div><p>RL 训练,规则化 reward(格式 + 结果 + 成本);只需模型的简单描述符(价格、延迟)即可泛化到没见过的模型。</p></div>
+          <div class="box re"><div class="box-label"><i></i>结果</div><p>7 个 QA benchmark 上超过强基线,同时有效控制成本。</p></div>
+        </div>
+        <div class="relate"><strong>与你的想法:</strong>确实"多轮"、确实把回复并进上下文、确实带 cost reward——但它的"轮"是<b>一个 QA 解答内部的协作子查询</b>,不是面向环境的 agent turn,也不涉及缓存经济学。</div>
+        <div class="links"><a href="https://arxiv.org/abs/2506.09033" target="_blank" rel="noreferrer">arXiv ↗</a></div>
+      </article>
+    </section>
+
+    <!-- TIER 2 -->
+    <section id="tier2">
+      <div class="section-head">
+        <div class="section-kicker">Tier 2 · similar mechanism</div>
+        <h2>Reasoning trace 内的 step 级路由</h2>
+        <p class="section-desc">机制和你几乎同构(弱模型出候选→接受或升级),但发生在推理链内,优化 FLOPs/token,不是 tool-agent、不涉及 API 缓存。</p>
+      </div>
+
+      <!-- TRIM -->
+      <article class="paper">
+        <div class="paper-head">
+          <div>
+            <h3 class="paper-title">TRIM — Targeted Stepwise Routing in Multi-Step Reasoning</h3>
+            <div class="paper-sub mono">Vansh Kapoor, Aviral Kumar et al. · ICLR 2026 · arXiv 2601.10245</div>
+          </div>
+          <span class="badge tier2">机制同构</span>
+        </div>
+        <div class="grid">
+          <div class="box bg"><div class="box-label"><i></i>背景</div><p>多步推理易"级联崩溃":一步错则整解崩。现有路由把整条 query 交给一个模型,视所有步骤同等。</p></div>
+          <div class="box mo"><div class="box-label"><i></i>Motivation</div><p>只把"可能让解答脱轨的关键步"路由给大模型,常规续写留给小模型。</p></div>
+          <div class="box me"><div class="box-label"><i></i>方法</div><p>每步弱模型先出候选,router policy 看部分推理链 + 候选,决定 accept(continue)或 escalate(大模型 regenerate);接受则<b>把弱模型输出当状态留下</b>。用 process reward + RL。</p></div>
+          <div class="box re"><div class="box-label"><i></i>结果</div><p>在数学推理上以更低成本达到接近全强模型的准确率;把路由建模成"看 prefix 状态"的序列决策。</p></div>
+        </div>
+        <div class="relate"><strong>与你的想法:</strong>"弱模型出→接受则保留其输出"的机制几乎一模一样。<b>差别</b>:在数学推理链内做,优化 token/FLOPs,<b>不涉及 API cache 经济学,不是 tool-using agent</b>。</div>
+        <div class="links">
+          <a href="https://arxiv.org/abs/2601.10245" target="_blank" rel="noreferrer">arXiv ↗</a>
+          <a href="https://openreview.net/forum?id=MoKrugWUfC" target="_blank" rel="noreferrer">OpenReview ↗</a>
+        </div>
+      </article>
+
+      <!-- STEER -->
+      <article class="paper">
+        <div class="paper-head">
+          <div>
+            <h3 class="paper-title">STEER — Confidence-Guided Stepwise Model Routing</h3>
+            <div class="paper-sub mono">Sangmook Lee et al. · AAAI 2026 · arXiv 2511.06190</div>
+          </div>
+          <span class="badge tier2">轻量信号</span>
+        </div>
+        <div class="grid">
+          <div class="box bg"><div class="box-label"><i></i>背景</div><p>已有 router 训练外部 deferral 模块,跨域鲁棒性差,还要昂贵的 Monte Carlo rollout 造标签。</p></div>
+          <div class="box mo"><div class="box-label"><i></i>Motivation</div><p>不用任何外部模型,做 domain-agnostic 的 step 级路由。</p></div>
+          <div class="box me"><div class="box-label"><i></i>方法</div><p>用<b>小模型自己的 logit 置信度</b>(生成每步前),经 Gaussian Mixture Model 校准,决定这步是否需要叫大模型。</p></div>
+          <div class="box re"><div class="box-label"><i></i>结果</div><p>数学/多跳QA/规划上,AIME 上 <b>+20% 准确率、省 48% FLOPs</b>(vs 纯大模型),超过依赖外部模块的基线。</p></div>
+        </div>
+        <div class="relate"><strong>与你的想法:</strong>同为 reasoning-step 级、优化 FLOPs,非 agent loop、非 cache-aware。信号是"置信度",不是"成本价差"。</div>
+        <div class="links"><a href="https://arxiv.org/abs/2511.06190" target="_blank" rel="noreferrer">arXiv ↗</a></div>
+      </article>
+    </section>
+
+    <!-- TIER 3 -->
+    <section id="tier3">
+      <div class="section-head">
+        <div class="section-kicker">Tier 3 · adjacent</div>
+        <h2>相关但更远的工作</h2>
+        <p class="section-desc">方向相关,但要么是 query 级、要么侧重别的目标。含两个存疑待核实的引用。</p>
+      </div>
+
+      <!-- Policy-Guided -->
+      <article class="paper">
+        <div class="paper-head">
+          <div>
+            <h3 class="paper-title">Policy-Guided Stepwise Model Routing</h3>
+            <div class="paper-sub mono">2026 · arXiv 2605.06116</div>
+          </div>
+          <span class="badge tier3">轨迹依赖视角</span>
+        </div>
+        <div class="grid">
+          <div class="box bg"><div class="box-label"><i></i>背景</div><p>step 级路由常被当成"每步孤立决策"。</p></div>
+          <div class="box mo"><div class="box-label"><i></i>Motivation</div><p>论证路由该看整条轨迹——当前步是否叫大模型,取决于 prefix 状态和<b>之前的模型选择</b>。</p></div>
+          <div class="box me"><div class="box-label"><i></i>方法</div><p>把 stepwise 路由建成 policy over trajectory,而非局部难度判断。</p></div>
+          <div class="box re"><div class="box-label"><i></i>结果</div><p>在成本-准确率上改进孤立决策基线。</p></div>
+        </div>
+        <div class="relate"><strong>与你的想法:</strong>"缓存状态(prefix + 历史模型选择)影响当前路由"这个<b>轨迹依赖视角</b>,和你"缓存状态该进路由目标"非常近——但它没把缓存的<b>美元成本</b>显式建模。</div>
+        <div class="links"><a href="https://arxiv.org/abs/2605.06116" target="_blank" rel="noreferrer">arXiv ↗</a></div>
+      </article>
+
+      <!-- ACRouter -->
+      <article class="paper">
+        <div class="paper-head">
+          <div>
+            <h3 class="paper-title">Agent-as-a-Router (ACRouter) — Agentic Routing for Coding</h3>
+            <div class="paper-sub mono">2026 · arXiv 2606.22902</div>
+          </div>
+          <span class="badge tier3">coding agent</span>
+        </div>
+        <div class="grid">
+          <div class="box bg"><div class="box-label"><i></i>背景</div><p>coding agent 里模型选择的信息缺口大。</p></div>
+          <div class="box mo"><div class="box-label"><i></i>Motivation</div><p>用一个 agentic router 主动闭合"该用哪个模型"的信息缺口。</p></div>
+          <div class="box me"><div class="box-label"><i></i>方法</div><p>Orchestrator + Verifier + Memory 三件套;配套 CodeRouterBench(~10K 实例、8 个 frontier LLM 的验证分)。</p></div>
+          <div class="box re"><div class="box-label"><i></i>结果</div><p>在 in-distribution 任务上累积 regret 最低,并泛化到 OOD 编程任务。</p></div>
+        </div>
+        <div class="relate"><strong>与你的想法:</strong>确实是 agentic 路由,但按 <b>regret / 能力</b> 路由,不涉及 cache 经济学。</div>
+        <div class="links"><a href="https://arxiv.org/abs/2606.22902" target="_blank" rel="noreferrer">arXiv ↗</a></div>
+      </article>
+
+      <!-- 存疑 -->
+      <article class="paper">
+        <div class="paper-head">
+          <div>
+            <h3 class="paper-title">存疑待核实的两个引用</h3>
+            <div class="paper-sub mono">Codex 引用,但独立核查未通过</div>
+          </div>
+          <span class="badge warn">⚠ 存疑</span>
+        </div>
+        <div class="grid">
+          <div class="box mo"><div class="box-label"><i></i>Budget-Aware Agentic Routing</div><p>Codex 引 arXiv 2602.21227(Zhang et al.),称"每步在便宜/贵模型间选,long-horizon agent"。<b style="color:var(--decode)">该 ID 尚未独立核实</b>,先存疑。</p></div>
+          <div class="box mo"><div class="box-label"><i></i>SWE-Router</div><p>Codex 引 arXiv 2607.00053,称"便宜 coding agent 先探索,再从部分轨迹决定是否升级"。<b style="color:var(--decode)">独立搜索未找到同名论文</b>,很可能是幻觉或记错标题。</p></div>
+        </div>
+        <div class="relate"><strong>说明:</strong>2026 年的 arXiv ID 本身合理(当前是 2026-07),但这两个具体 ID 未通过交叉验证。deep-research workflow 完成后会做敌对式核查再定论。</div>
+      </article>
+    </section>
+
+    <footer>
+      <div>Turn-Level Routing Survey · 生成于 2026-07-04 · Codex gpt-5.6-sol(high) + 独立 WebFetch 核实 · 部分 2026 arXiv ID 待敌对式核查</div>
+      <div class="mono"><a href="./index.html">← Trajectory Cost Atlas</a></div>
+    </footer>
+  </main>
+</body>
+</html>
