@@ -548,6 +548,8 @@
         <a href="#cross-harness">跨 Harness</a>
         <a href="#levers">节省杠杆</a>
         <a href="#method">口径</a>
+        <a href="./claude-code-long-turn-cost.html">Claude Code 长轨迹 →</a>
+        <a href="./semianalysis.html">SemiAnalysis 生产轨迹 →</a>
         <a href="./survey.html">论文 Survey →</a>
       </nav>
     </div>
@@ -948,11 +950,15 @@
       <div class="section-head">
         <div>
           <div class="section-kicker">05 · Real production traces · SemiAnalysis</div>
-          <h2>真实 Claude Code 生产轨迹：钱几乎都在 cache read</h2>
+          <h2>真实 Claude Code proxy traces：官方 token 统计，成本由我们重建</h2>
         </div>
-        <p class="section-desc">数据源 <span class="mono">semianalysisai/cc-traces-weka-062126</span>（2026-06-21 构建）：374 条真实 CC 生产 session、56,594 次主-agent 调用。成本由 <span class="mono">hash_ids</span> 重建 KV-cache 命中算出，token 按 o200k→Anthropic 计费口径折 0.60。这是三个开源采样之外，第一份来自生产流量的 ground truth。</p>
+        <p class="section-desc">SemiAnalysis 06/21 v7 官方数据为 <strong>393 traces、56,798 main requests、1,697 subagent groups、42,029 inner requests、98,827 total requests</strong>。作者发布的是 proxy token / block-hash 结构，不是 Anthropic 原生账单；本站 USD 与 cache buckets 均为我们基于 LCP、TTL 和公开价目的二次重建。</p>
       </div>
-      <div class="visual-overview" style="margin-top:22px">
+      <article class="panel panel-pad" style="margin-top:22px">
+        <div class="viz-title-row" style="margin-bottom:10px"><div><h3 class="viz-title">当前权威入口</h3><div class="viz-sub mono">21.635B input proxy · 106.474M Anthropic-reported output · v7 input scale ≈1.00× billed aggregate</div></div><a class="pill" href="./claude-code-long-turn-cost.html#semianalysis-official">查看 SemiAnalysis 官方发现 vs 本页二次分析 →</a></div>
+        <div class="scale-note">请以新长轨迹页面为准。旧版 374 traces / 56,594 main 与 ×0.60 的 06/21 展示已经过期；×0.60 仅保留给 05/12 老数据集口径。</div>
+      </article>
+      <div class="visual-overview" style="display:none" aria-hidden="true">
         <article class="panel donut-panel">
           <div class="viz-title-row">
             <div>
