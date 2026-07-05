@@ -544,6 +544,7 @@
         <a href="#anatomy">成本结构</a>
         <a href="#long-trajs">长轨迹逐轮</a>
         <a href="#decode">Decode 去向</a>
+        <a href="#semianalysis">生产轨迹</a>
         <a href="#cross-harness">跨 Harness</a>
         <a href="#levers">节省杠杆</a>
         <a href="#method">口径</a>
@@ -940,6 +941,74 @@
           <div class="action-bar" id="kbActionBar" aria-label="KernelBook tool call 数量分类"></div>
           <div class="action-legend" id="kbActionLegend"></div>
         </article>
+      </div>
+    </section>
+
+    <section id="semianalysis">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">05 · Real production traces · SemiAnalysis</div>
+          <h2>真实 Claude Code 生产轨迹：钱几乎都在 cache read</h2>
+        </div>
+        <p class="section-desc">数据源 <span class="mono">semianalysisai/cc-traces-weka-062126</span>（2026-06-21 构建）：374 条真实 CC 生产 session、56,594 次主-agent 调用。成本由 <span class="mono">hash_ids</span> 重建 KV-cache 命中算出，token 按 o200k→Anthropic 计费口径折 0.60。这是三个开源采样之外，第一份来自生产流量的 ground truth。</p>
+      </div>
+      <div class="visual-overview" style="margin-top:22px">
+        <article class="panel donut-panel">
+          <div class="viz-title-row">
+            <div>
+              <h3 class="viz-title">Pooled cost mix · 主-agent 流</h3>
+              <div class="viz-sub mono">W $6.25 · R $0.50 · O $25 / 1M · haiku 辅助按 haiku 价</div>
+            </div>
+            <div class="legend" style="margin:0">
+              <span class="legend-item"><i class="swatch" style="--c:var(--write)"></i>Cache write</span>
+              <span class="legend-item"><i class="swatch" style="--c:var(--read)"></i>Cache read</span>
+              <span class="legend-item"><i class="swatch" style="--c:var(--decode)"></i>Decode</span>
+            </div>
+          </div>
+          <div class="summary-donut-grid">
+            <div class="donut-card">
+              <div class="donut-wrap" role="img" aria-label="SemiAnalysis pooled cost: cache write 11.2 percent, cache read 72.8 percent, decode 16.1 percent">
+                <div class="donut" style="--gradient:conic-gradient(var(--write) 0 11.17%, var(--read) 11.17% 83.95%, var(--decode) 83.95% 100%)"></div>
+                <div class="donut-center"><div class="donut-total">$7,244</div><div class="donut-unit">normalized cost</div></div>
+              </div>
+              <div class="donut-copy">
+                <h3>成本构成</h3><p>56,594 次调用合计 · 重建计费口径</p>
+                <div class="donut-stat"><i style="--c:var(--write)"></i><span>Cache write · $809</span><strong>11.2%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--read)"></i><span>Cache read · $5,272</span><strong>72.8%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--decode)"></i><span>Decode · $1,163</span><strong>16.1%</strong></div>
+              </div>
+            </div>
+            <div class="donut-card">
+              <div class="donut-wrap" role="img" aria-label="SemiAnalysis token volume: cache write 1.2 percent, cache read 98.4 percent, decode 0.4 percent">
+                <div class="donut" style="--gradient:conic-gradient(var(--write) 0 1.21%, var(--read) 1.21% 99.57%, var(--decode) 99.57% 100%)"></div>
+                <div class="donut-center"><div class="donut-total">17.87B</div><div class="donut-unit">token events</div></div>
+              </div>
+              <div class="donut-copy">
+                <h3>Token 体量</h3><p>cache read 主导上下文 · decode 占比极小</p>
+                <div class="donut-stat"><i style="--c:var(--write)"></i><span>Cache write · 216.6M</span><strong>1.2%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--read)"></i><span>Cache read · 17.57B</span><strong>98.4%</strong></div>
+                <div class="donut-stat"><i style="--c:var(--decode)"></i><span>Decode · 77.6M</span><strong>0.4%</strong></div>
+              </div>
+            </div>
+          </div>
+          <div class="scale-note">Cache read 吃掉 <strong>73%</strong> 的成本，比任何开源采样都高；decode 只占 16%。这重申核心结论：省钱的杠杆是压缩<strong>被重读的前缀</strong>，不是替换 decode 轮次。</div>
+        </article>
+        <div class="column-panels" style="grid-template-columns:1fr">
+          <article class="panel column-panel">
+            <div class="viz-title-row" style="margin-bottom:0">
+              <div><h3 class="viz-title">每-call 成本 · 按轨迹四分位</h3><div class="viz-sub">平均 $/call · 前段 → 后段 · 每条 session 内部切四段后汇总</div></div>
+              <span class="pill mono">Q4/Q1 1.53×</span>
+            </div>
+            <div class="column-chart" role="img" aria-label="Average per-call cost by trajectory quartile: Q1 0.098, Q2 0.130, Q3 0.135, Q4 0.149 dollars">
+              <span class="axis-max">$0.15</span>
+                <div class="column-item"><span class="column-value">$0.098</span><div class="column-bar" style="--h:65.5%;--c:var(--read)"></div><span class="column-label">Q1 · 前 25%</span></div>
+                <div class="column-item"><span class="column-value">$0.130</span><div class="column-bar" style="--h:87.0%;--c:var(--read)"></div><span class="column-label">Q2</span></div>
+                <div class="column-item"><span class="column-value">$0.135</span><div class="column-bar" style="--h:90.4%;--c:var(--read)"></div><span class="column-label">Q3</span></div>
+                <div class="column-item"><span class="column-value">$0.149</span><div class="column-bar" style="--h:100.0%;--c:var(--read)"></div><span class="column-label">Q4 · 后 25%</span></div>
+            </div>
+            <div class="scale-note">后 25% 的调用平均比前 25% 贵 <strong>1.53×</strong>——前缀随轮数线性变长，越靠后每轮重读的 cache 越多。这是「开销后重、但非长尾」的直接证据：没有少数尖峰 call，而是平滑爬升。</div>
+          </article>
+        </div>
       </div>
     </section>
 
