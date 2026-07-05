@@ -304,7 +304,8 @@
       <div class="stat" style="border-bottom:1px solid var(--line)"><span class="nm">Filters</span><span class="pc" style="font-weight:500;color:var(--ink2)">trace v7 · CLI ≥ 2.1.139 · ≥ 20 requests/session · classifier &amp; image calls excluded</span></div>
       <div class="stat" style="border-bottom:1px solid var(--line)"><span class="nm">Cost model</span><span class="pc" style="font-weight:500;color:var(--ink2)">cache read/write split rebuilt from <code>hash_ids</code> · Opus 4.8 list price · haiku aux at haiku price</span></div>
       <div class="stat" style="border-bottom:1px solid var(--line)"><span class="nm">Token units</span><span class="pc" style="font-weight:500;color:var(--ink2)">o200k block counts × 0.60 → Anthropic billing tokens</span></div>
-      <div class="stat"><span class="nm">Scope</span><span class="pc" style="font-weight:500;color:var(--ink2)">main-agent stream only · sub-agent fan-out excluded</span></div>
+      <div class="stat" style="border-bottom:1px solid var(--line)"><span class="nm">Scope</span><span class="pc" style="font-weight:500;color:var(--ink2)">main-agent stream only · sub-agent fan-out excluded</span></div>
+      <div class="stat"><span class="nm">Prefill caveat</span><span class="pc" style="font-weight:500;color:var(--ink2)">the WekaTrace format stores only block hashes, not a billed U/W/R split — every fresh block is priced as cache write ($6.25/M); uncached input ($5/M) is not broken out separately. Affects only the 11% prefill slice.</span></div>
     </div>
   </section>
 
