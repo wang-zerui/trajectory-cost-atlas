@@ -53,12 +53,16 @@
   .legend i, .lg i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
 
   /* donut */
+  .donut-group{display:flex;flex-direction:column;gap:12px}
+  .donut-title{font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:baseline;gap:8px}
+  .donut-title small{font-weight:500;color:var(--muted);font-size:12px}
   .donut-row{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
   .donut{width:170px;height:170px;border-radius:50%;flex:none;position:relative;
     background:var(--g);mask:radial-gradient(circle,transparent 52%,#000 53%);-webkit-mask:radial-gradient(circle,transparent 52%,#000 53%)}
-  .donut-center{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
-  .donut-center b{font-size:22px;letter-spacing:-.01em}
-  .donut-center span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .donut-center{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:1px}
+  .donut-center .dl{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .donut-center b{font-size:23px;letter-spacing:-.01em}
+  .donut-center span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
   .stat-list{flex:1;min-width:210px}
   .stat{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
   .stat:last-child{border-bottom:0}
@@ -144,32 +148,39 @@
         <div class="sec-kicker">01 · Cost Anatomy</div>
         <h2>Cost is cache read, not decode</h2>
       </div>
-      <p class="sec-note">Every model call re-reads the whole conversation prefix from the KV cache.
-        Across all sessions that <strong>cache read is 73% of spend</strong> — while decode,
-        the tokens the model actually writes, is only 16%. Output is a small slice of the bill;
-        the prefix you keep re-reading is the expensive part.</p>
+      <p class="sec-note">Three cost components: <strong>prefill</strong> (writing new prefix into the cache),
+        <strong>cache read</strong> (re-reading that prefix every call), and <strong>decode</strong> (tokens the model writes).
+        Because Claude Code caches every new prefix, prefill here <em>is</em> the cache-write slice.
+        Across all sessions <strong>cache read is 73% of spend</strong> and decode only 16% —
+        the prefix you keep re-reading is the expensive part, not the output.</p>
     </div>
     <div class="panel">
       <div class="two">
+        <div class="donut-group">
+        <div class="donut-title">Cost split <small>dollars at Opus 4.8 list price</small></div>
         <div class="donut-row">
           <div class="donut" style="--g:conic-gradient(var(--write) 0 11.17%, var(--read) 11.17% 83.95%, var(--decode) 83.95% 100%)">
-            <div class="donut-center"><b>$7,244</b><span>total cost</span></div>
+            <div class="donut-center"><span class="dl">Cost</span><b>$7,244</b></div>
           </div>
           <div class="stat-list">
-            <div class="stat"><i style="background:var(--write)"></i><span class="nm">Cache write</span><span class="pc">11.2%</span></div>
+            <div class="stat"><i style="background:var(--write)"></i><span class="nm">Prefill (cache write)</span><span class="pc">11.2%</span></div>
             <div class="stat"><i style="background:var(--read)"></i><span class="nm">Cache read</span><span class="pc">72.8%</span></div>
             <div class="stat"><i style="background:var(--decode)"></i><span class="nm">Decode</span><span class="pc">16.1%</span></div>
           </div>
         </div>
+        </div>
+        <div class="donut-group">
+        <div class="donut-title">Token split <small>volume, same three components</small></div>
         <div class="donut-row">
           <div class="donut" style="--g:conic-gradient(var(--write) 0 1.21%, var(--read) 1.21% 99.57%, var(--decode) 99.57% 100%)">
-            <div class="donut-center"><b>17.9B</b><span>tokens</span></div>
+            <div class="donut-center"><span class="dl">Tokens</span><b>17.9B</b></div>
           </div>
           <div class="stat-list">
-            <div class="stat"><i style="background:var(--write)"></i><span class="nm">Cache write · 217M</span><span class="pc">1.2%</span></div>
+            <div class="stat"><i style="background:var(--write)"></i><span class="nm">Prefill (cache write) · 217M</span><span class="pc">1.2%</span></div>
             <div class="stat"><i style="background:var(--read)"></i><span class="nm">Cache read · 17.6B</span><span class="pc">98.4%</span></div>
             <div class="stat"><i style="background:var(--decode)"></i><span class="nm">Decode · 78M</span><span class="pc">0.4%</span></div>
           </div>
+        </div>
         </div>
       </div>
       <p class="caption">Left ring is dollars, right ring is token volume, both at Opus 4.8 list price.
