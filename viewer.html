@@ -71,6 +71,19 @@
   .tip .row{display:flex;align-items:center;gap:7px;margin:3px 0;color:var(--ink2)}
   .tip .row i{width:9px;height:9px;border-radius:2px}
   .tip .row b{margin-left:auto;font-variant-numeric:tabular-nums}
+  /* loading */
+  .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;padding:70px 20px;color:var(--muted);font-size:14px}
+  .spinner{width:34px;height:34px;border-radius:50%;
+    border:3px solid var(--line);border-top-color:var(--accent);
+    animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .list-loading{padding:16px}
+  .skel{height:64px;border-radius:8px;margin-bottom:8px;
+    background:linear-gradient(90deg,#f0efe9 25%,#e7e5dd 50%,#f0efe9 75%);
+    background-size:200% 100%;animation:shimmer 1.2s ease-in-out infinite}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .err{color:#c14a3d;padding:40px 20px;text-align:center;font-size:14px}
   @media(max-width:820px){.layout{grid-template-columns:1fr}.list{max-height:280px}}
 </style>
 </head>
@@ -102,8 +115,8 @@
       </label>
     </div>
     <div class="layout">
-      <div class="list" id="list"></div>
-      <div class="detail" id="detail"></div>
+      <div class="list" id="list"><div class="list-loading"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
+      <div class="detail" id="detail"><div class="loading"><div class="spinner"></div>Loading sessions…</div></div>
     </div>
   </div>
   <div class="tip" id="tip"></div>
@@ -113,10 +126,16 @@ const C={w:'var(--write)',r:'var(--read)',o:'var(--decode)'};
 let DATA=null, CUR=null, ORDER=[];
 const $=s=>document.querySelector(s);
 
-fetch('./traces_sample.json').then(r=>r.json()).then(d=>{
+fetch('./traces_sample.json').then(r=>{
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}).then(d=>{
   DATA=d; $('#nsess').textContent=d.meta.sample;
   ORDER=d.sessions.map((_,i)=>i);
   sortList('cost'); renderList(); select(ORDER[0]);
+}).catch(err=>{
+  $('#list').innerHTML='<div class="err">Failed to load sessions<br>'+err.message+'</div>';
+  $('#detail').innerHTML='<div class="err">Could not load <code>traces_sample.json</code>.<br>'+err.message+' — try reloading.</div>';
 });
 
 function sortList(key){
@@ -139,9 +158,21 @@ function renderList(){
     el.appendChild(d);
   });
 }
+let RENDER_TOKEN=0;
 function select(i){
   CUR=i; renderList();
   const s=DATA.sessions[i];
+  // show loading immediately; render the (possibly heavy) chart on a later frame
+  $('#detail').innerHTML=`<h2>${s.id}</h2>
+    <div class="d-meta">${s.n} model calls · $${s.cost.toFixed(2)} reconstructed cost · ${s.subs} sub-agent groups</div>
+    <div class="loading"><div class="spinner"></div>Rendering ${s.n} calls…</div>`;
+  const token=++RENDER_TOKEN;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(token!==RENDER_TOKEN) return; // a newer click superseded this one
+    renderDetail(s);
+  }));
+}
+function renderDetail(s){
   const mx=Math.max(...s.calls.map(c=>c.w+c.r+c.o));
   const bars=s.calls.map((c,idx)=>{
     const tot=c.w+c.r+c.o;
