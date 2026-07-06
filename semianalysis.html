@@ -130,6 +130,8 @@
       <a href="#backloaded">Back-Loaded Cost</a>
       <a href="#concentration">Cost Concentration</a>
       <a href="#trajectory">Trajectory Comparison</a>
+      <a href="#expired">Expired-Cache Waste</a>
+      <a href="#reread">Wasteful Re-Reads</a>
       <a href="#method">Method</a>
       <a href="./viewer.html">Trace viewer →</a>
       <a href="./index.html">All harnesses →</a>
@@ -288,11 +290,62 @@
     </div>
   </section>
 
+
+  <!-- EXPIRED CACHE WASTE -->
+  <section id="expired">
+    <div class="sec-head">
+      <div>
+        <div class="sec-kicker">05 · Expired-Cache Waste</div>
+        <h2>The real waste is paused sessions, not big reads</h2>
+      </div>
+      <p class="sec-note">The KV cache expires after ~5 minutes. When a session pauses that long — the user
+        steps away, thinks, gets interrupted — the whole prefix falls out of cache and the next call must
+        <strong>re-write it at 12.5× the read price</strong>. Just 5% of calls sit
+        after a &gt;5-minute gap, yet the expiry penalty adds up to <strong>$3,108 — about
+        30% of total cost</strong> that buys no progress at all.</p>
+    </div>
+    <div class="panel">
+      <div class="legend" style="margin-bottom:14px">
+        <span class="lg"><i style="background:var(--read)"></i>Cache still warm (cheap)</span>
+        <span class="lg"><i style="background:var(--decode)"></i>Cache expired → rewrite (expensive)</span>
+      </div>
+      <div class="barchart"><div class="bar-item"><span class="bar-val">$0.10</span><div class="bar" style="--h:7%;--c:var(--read)"></div><span class="bar-lab"><30s<br><small style="color:var(--muted)">38,095 calls</small></span></div><div class="bar-item"><span class="bar-val">$0.13</span><div class="bar" style="--h:9%;--c:var(--read)"></div><span class="bar-lab">30s–5m<br><small style="color:var(--muted)">15,507 calls</small></span></div><div class="bar-item"><span class="bar-val">$1.35</span><div class="bar" style="--h:100%;--c:var(--decode)"></div><span class="bar-lab">5m–1h<br><small style="color:var(--muted)">2,102 calls</small></span></div><div class="bar-item"><span class="bar-val">$1.19</span><div class="bar" style="--h:88%;--c:var(--decode)"></div><span class="bar-lab">>1h<br><small style="color:var(--muted)">516 calls</small></span></div></div>
+      <p class="caption"><strong>Average prefix cost per call</strong>, grouped by the gap since the previous call.
+        A call after a 5m–1h pause costs <strong>$1.32</strong> — 13× a
+        back-to-back call ($0.099) — because it pays cache-write, not cache-read, on the whole history.</p>
+    </div>
+  </section>
+
+  <!-- WASTEFUL RE-READS -->
+  <section id="reread">
+    <div class="sec-head">
+      <div>
+        <div class="sec-kicker">06 · Wasteful Re-Reads</div>
+        <h2>Paying to re-read far more than you produce</h2>
+      </div>
+      <p class="sec-note">Every call re-reads the entire history to emit its next step. The typical call spends
+        <strong>7× more on cache read than on decode</strong> (p90 reaches 51×).
+        The <strong>41% of calls with a ≥10× read-to-output ratio</strong> — re-reading a
+        long context to produce a short action — burn <strong>28% of total cost</strong>.
+        That said, only 4.0% of calls emit under 50 tokens, so it is not death-by-tiny-actions —
+        it is the structural cost of carrying full context every turn.</p>
+    </div>
+    <div class="panel">
+      <div class="legend" style="margin-bottom:14px">
+        <span class="lg"><i style="background:var(--read)"></i>Balanced (&lt;10× read/decode)</span>
+        <span class="lg"><i style="background:var(--decode)"></i>Re-read heavy (≥10×)</span>
+      </div>
+      <div class="barchart"><div class="bar-item"><span class="bar-val">$4,336</span><div class="bar" style="--h:100%;--c:var(--read)"></div><span class="bar-lab"><1x</span></div><div class="bar-item"><span class="bar-val">$653</span><div class="bar" style="--h:15%;--c:var(--read)"></div><span class="bar-lab">1-2x</span></div><div class="bar-item"><span class="bar-val">$1,321</span><div class="bar" style="--h:30%;--c:var(--read)"></div><span class="bar-lab">2-5x</span></div><div class="bar-item"><span class="bar-val">$1,104</span><div class="bar" style="--h:25%;--c:var(--read)"></div><span class="bar-lab">5-10x</span></div><div class="bar-item"><span class="bar-val">$1,347</span><div class="bar" style="--h:31%;--c:var(--decode)"></div><span class="bar-lab">10-25x</span></div><div class="bar-item"><span class="bar-val">$735</span><div class="bar" style="--h:17%;--c:var(--decode)"></div><span class="bar-lab">25-50x</span></div><div class="bar-item"><span class="bar-val">$856</span><div class="bar" style="--h:20%;--c:var(--decode)"></div><span class="bar-lab">50x+</span></div></div>
+      <p class="caption"><strong>Total cost by read-to-decode ratio</strong> of each call. Left bars are big-output
+        calls (cost is real work); the orange right tail is context re-read that dwarfs the output produced.</p>
+    </div>
+  </section>
+
   <!-- METHOD -->
   <section id="method">
     <div class="sec-head">
       <div>
-        <div class="sec-kicker">05 · Method &amp; Caveats</div>
+        <div class="sec-kicker">07 · Method &amp; Caveats</div>
         <h2>How these numbers were built</h2>
       </div>
       <p class="sec-note">Costs are a faithful reconstruction, not a billing export. Read this before quoting
